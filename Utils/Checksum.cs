@@ -12,14 +12,5 @@ namespace UploadRecords.Utils
 
            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
-
-        public static bool Validate(string checksum, string filePath)
-        {
-            bool result = false;
-
-
-
-            return result;
-        }
     }
 }
