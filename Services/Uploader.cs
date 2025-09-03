@@ -98,6 +98,9 @@ namespace UploadRecords.Services
             }
 
             Audit.Success(item.File.LogDirectory, $"{item.File.Name} was uploaded with node id {upload.Id} - {item.File.Path}");
+            item.File.EndDate = DateTime.Now;
+            item.File.Status = BatchFileStatus.Completed;
+            UpdateProcessedFile(item.File);
             result = 1;
 
             return result;

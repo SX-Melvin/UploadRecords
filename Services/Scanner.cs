@@ -19,6 +19,7 @@ namespace UploadRecords.Services
         public string ControlFileName = "metadata.xlsx";
         public string ManifestFileName = "manifest-sha256.txt";
         public string DataFolder = "data";
+        public ControlFile ControlFile;
         public List<string> FoldersContainsFile = ["master", "access"];
         public List<string> ValidFileExtensions = [".tiff", ".pdf"];
         public List<BatchFile> InvalidFiles = [];
@@ -45,6 +46,8 @@ namespace UploadRecords.Services
                     Logger.Error("Control file not found, skipped...");
                     return;
                 }
+
+                ControlFile = metadata;
 
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {

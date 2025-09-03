@@ -15,10 +15,11 @@ namespace UploadRecords.Services
         public int MaxRun { get; set; }
         public int IntervalEachRun { get; set; }
 
-        public Queue(int maxRun, int intervalEachRun)
+        public Queue(int maxRun, int intervalEachRun, List<BatchFile> files)
         {
             MaxRun = maxRun;
             IntervalEachRun = intervalEachRun;
+            RegisterFiles(files, true);
         }
 
         public QueueItem? GetScheduled()
