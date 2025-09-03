@@ -6,11 +6,13 @@ namespace UploadRecords.Utils
     {
         public static void Success(string path, string message)
         {
+            Logger.Information(message);
             Write(Path.Combine(path, "success.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}");
         }
 
         public static void Fail(string path, string message)
         {
+            Logger.Error(message);
             Write(Path.Combine(path, "fail.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}");
         }
 

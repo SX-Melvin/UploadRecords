@@ -2,21 +2,21 @@
 using Newtonsoft.Json;
 using UploadRecords.Models.API;
 
-namespace UploadRecords.Utils
+namespace UploadRecords.Services
 {
     public class OTCS
     {
-        readonly string username;
-        readonly string secret;
-        RestClientOptions restOptions;
-        RestClient client;
+        readonly string Username;
+        readonly string Secret;
+        RestClientOptions RestOptions;
+        RestClient Client;
 
         public OTCS(string username, string secret, string url) 
         {
-            this.username = username;
-            this.secret = secret;
-            restOptions = new RestClientOptions(url);
-            client = new RestClient(restOptions);
+            this.Username = username;
+            this.Secret = secret;
+            this.RestOptions = new RestClientOptions(url);
+            this.Client = new RestClient(this.RestOptions);
         }
 
         public async Task<GetTicketResponse> GetTicket()
@@ -25,11 +25,11 @@ namespace UploadRecords.Utils
 
             var request = new RestRequest("v1/auth", Method.Post);
 
-            request.AddParameter("username", username);
-            request.AddParameter("password", secret);
+            request.AddParameter("username", Username);
+            request.AddParameter("password", Secret);
             request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
 
-            var response = await client.ExecuteAsync<GetTicketResponse>(request);
+            var response = await Client.ExecuteAsync<GetTicketResponse>(request);
 
             var data = JsonConvert.DeserializeObject<GetTicketResponse>(response.Content);
 
@@ -62,7 +62,7 @@ namespace UploadRecords.Utils
             request.AddParameter("name", Path.GetFileName(filePath));
             request.AddFile("file", filePath);
 
-            var response = await client.ExecuteAsync<CreateFileResponse>(request);
+            var response = await Client.ExecuteAsync<CreateFileResponse>(request);
             var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
 
             if(data != null)

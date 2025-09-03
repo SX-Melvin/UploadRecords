@@ -10,6 +10,7 @@ namespace UploadRecords.Models
     {
         public required string Name { get; set; }
         public required string Path { get; set; }
+        public required string LogDirectory { get; set; }
         public required string Checksum { get; set; }
         public required string BatchFolderPath { get; set; }
         public required string SubBatchFolderPath { get; set; }

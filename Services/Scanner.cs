@@ -13,26 +13,28 @@ namespace UploadRecords.Services
 {
     public class Scanner
     {
-        public string folderPath;
-        public string logPath;
-        public string controlFileName = "metadata.xlsx";
-        public string manifestFileName = "manifest-sha256.txt";
-        public string dataFolder = "data";
-        public List<string> foldersContainsFile = ["master", "access"];
-        public List<string> validFileExtensions = [".tiff", ".pdf"];
-        public List<ValidFile> validFiles = [];
+        public string FolderPath;
+        public string LogPath;
+        public string ControlFileName = "metadata.xlsx";
+        public string ManifestFileName = "manifest-sha256.txt";
+        public string DataFolder = "data";
+        public List<string> FoldersContainsFile = ["master", "access"];
+        public List<string> ValidFileExtensions = [".tiff", ".pdf"];
+        public List<ValidFile> ValidFiles = [];
 
         public Scanner(string batchPath, string logPath)
         {
-            folderPath = batchPath;
-            this.logPath = logPath;
+            FolderPath = batchPath;
+            LogPath = logPath;
         }
 
-        public void Run()
+        public void ScanValidFiles()
         {
             try
             {
-                string controlFilePath = Path.Combine(folderPath, controlFileName);
+                Logger.Information($"Beginning Scanning");
+
+                string controlFilePath = Path.Combine(FolderPath, ControlFileName);
                 var metadata = Excel.ReadControlFile(controlFilePath);
 
                 // Control file not found
@@ -42,11 +44,11 @@ namespace UploadRecords.Services
                     return;
                 }
 
-                foreach (var subBatchFolder in Directory.GetDirectories(folderPath))
+                foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {
                     Logger.Information($"Processing {subBatchFolder}");
 
-                    string manifestFilePath = Path.Combine(subBatchFolder, manifestFileName);
+                    string manifestFilePath = Path.Combine(subBatchFolder, ManifestFileName);
                     var manifest = CSV.ReadManifest(manifestFilePath);
 
                     // Manifest not found
@@ -56,10 +58,10 @@ namespace UploadRecords.Services
                         continue;
                     }
 
-                    foreach (var folder in foldersContainsFile)
+                    foreach (var folder in FoldersContainsFile)
                     {
-                        string filesPath = Path.Combine(Path.Combine(subBatchFolder, dataFolder), folder);
-                        var logsPath = Path.Combine(logPath, Path.GetFileName(subBatchFolder));
+                        string filesPath = Path.Combine(Path.Combine(subBatchFolder, DataFolder), folder);
+                        var logsPath = Path.Combine(LogPath, Path.GetFileName(subBatchFolder));
 
                         foreach (var file in Directory.GetFiles(filesPath))
                         {
@@ -68,7 +70,7 @@ namespace UploadRecords.Services
 
                             // Check file extensions
                             var ext = Path.GetExtension(file).ToLowerInvariant();
-                            if (!validFileExtensions.Contains(ext))
+                            if (!ValidFileExtensions.Contains(ext))
                             {
                                 Logger.Error($"File extension is not valid, skipped...");
                                 Audit.Fail(logsPath, $"File {fileName} has no valid extension - {file}");
@@ -103,9 +105,10 @@ namespace UploadRecords.Services
                                 continue;
                             }
 
-                            validFiles.Add(new() {
+                            ValidFiles.Add(new() {
                                 Checksum = checksum,
                                 Path = file,
+                                LogDirectory = logsPath,
                                 Name = Path.GetFileName(file),
                                 //OTCS = new() { ParentID = 1231230 },
                                 OTCS = new() { ParentID = 1145353 },
@@ -115,13 +118,13 @@ namespace UploadRecords.Services
                         }
                     }
 
-                    Logger.Information($"End");
+                    Logger.Information($"Scanning Completed");
                 }
 
             }
             catch (Exception ex)
             {
-                    Logger.Error(ex.Message);
+                Logger.Error(ex.Message);
             }
         }
     }
