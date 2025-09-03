@@ -26,7 +26,7 @@ namespace UploadRecords.Services
             return Queues.FirstOrDefault(x => DateTime.Now >= x.RunAt);
         }
 
-        public void RegisterFiles(List<ValidFile> files, bool triggerNow = false)
+        public void RegisterFiles(List<BatchFile> files, bool triggerNow = false)
         {
             foreach (var file in files)
             {
@@ -34,7 +34,7 @@ namespace UploadRecords.Services
             }
         }
 
-        public void RegisterFile(ValidFile file, bool triggerNow = false)
+        public void RegisterFile(BatchFile file, bool triggerNow = false)
         {
             var queue = Queues.FirstOrDefault(x => x.File == file);
 
@@ -46,13 +46,6 @@ namespace UploadRecords.Services
                     RunAt =  DateTime.Now.AddMilliseconds(!triggerNow ? IntervalEachRun : -1),
                     TotalRun = 0
                 });
-                return;
-            }
-
-            if(queue.TotalRun >= MaxRun)
-            {
-                Audit.Fail(file.LogDirectory, $"{file.Name} upload is failed {MaxRun} times, skipped... - {file.Path}");
-                Queues.Remove(queue);
                 return;
             }
 

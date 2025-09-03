@@ -9,7 +9,7 @@ namespace UploadRecords.Models
     public class QueueItem
     {
         public DateTime RunAt { get; set; }
-        public ValidFile File { get; set; }
+        public BatchFile File { get; set; }
         public int TotalRun { get; set; } = 0;
     }
 }

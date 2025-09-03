@@ -6,6 +6,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using UploadRecords.Configs;
+using UploadRecords.Enums;
 using UploadRecords.Models;
 using UploadRecords.Utils;
 
@@ -20,7 +21,8 @@ namespace UploadRecords.Services
         public string DataFolder = "data";
         public List<string> FoldersContainsFile = ["master", "access"];
         public List<string> ValidFileExtensions = [".tiff", ".pdf"];
-        public List<ValidFile> ValidFiles = [];
+        public List<BatchFile> InvalidFiles = [];
+        public List<BatchFile> ValidFiles = [];
 
         public Scanner(string batchPath, string logPath)
         {
@@ -65,6 +67,22 @@ namespace UploadRecords.Services
 
                         foreach (var file in Directory.GetFiles(filesPath))
                         {
+                            var fileInfo = new FileInfo(file);
+
+                            var batchFile = new BatchFile()
+                            {
+                                Path = file,
+                                LogDirectory = logsPath,
+                                Name = Path.GetFileName(file),
+                                //OTCS = new() { ParentID = 1231230 },
+                                StartDate = DateTime.Now,
+                                Attempt = 1,
+                                SizeInKB = fileInfo.Length / 1024,
+                                OTCS = new() { ParentID = 1145353 },
+                                BatchFolderPath = filesPath,
+                                SubBatchFolderPath = subBatchFolder
+                            };
+
                             Logger.Information($"Processing {file}");
                             var fileName = Path.GetFileName(file);
 
@@ -72,16 +90,23 @@ namespace UploadRecords.Services
                             var ext = Path.GetExtension(file).ToLowerInvariant();
                             if (!ValidFileExtensions.Contains(ext))
                             {
-                                Logger.Error($"File extension is not valid, skipped...");
-                                Audit.Fail(logsPath, $"File {fileName} has no valid extension - {file}");
+                                var remarks = $"File {fileName} has no valid extension";
+                                batchFile.Status = BatchFileStatus.Failed;
+                                batchFile.Remarks = remarks;
+                                batchFile.EndDate = DateTime.Now;
+                                InvalidFiles.Add(batchFile);
+                                Audit.Fail(logsPath, $"{remarks} - {file}");
                                 continue;
                             }
 
-                            var fileInfo = new FileInfo(file);
                             if (fileInfo.Length == 0)
                             {
-                                Logger.Error($"File is empty, skipped...");
-                                Audit.Fail(logsPath, $"File {fileName} is empty - {file}");
+                                var remarks = $"File {fileName} is empty";
+                                batchFile.Status = BatchFileStatus.Failed;
+                                batchFile.Remarks = remarks;
+                                batchFile.EndDate = DateTime.Now;
+                                InvalidFiles.Add(batchFile);
+                                Audit.Fail(logsPath, $"{remarks} - {file}");
                                 continue;
                             }
 
@@ -93,28 +118,28 @@ namespace UploadRecords.Services
 
                             if (findChecksumByPath == null)
                             {
-                                Logger.Error($"Checksum not found in manifest file, skipped...");
-                                Audit.Fail(logsPath, $"File {fileName} checksum's not found in manifest file - {file}");
+                                var remarks = $"File {fileName} checksum's not found in manifest file";
+                                batchFile.Status = BatchFileStatus.Failed;
+                                batchFile.Remarks = remarks;
+                                batchFile.EndDate = DateTime.Now;
+                                InvalidFiles.Add(batchFile);
+                                Audit.Fail(logsPath, $"{remarks} - {file}");
                                 continue;
                             }
 
                             if (findChecksumByPath.Checksum != checksum)
                             {
-                                Logger.Error($"Checksum mismatch, skipped...");
-                                Audit.Fail(logsPath, $"File {fileName} checksum's is mismatch - {file}");
+                                var remarks = $"File {fileName} checksum's is mismatch";
+                                batchFile.Status = BatchFileStatus.Failed;
+                                batchFile.Remarks = remarks;
+                                batchFile.EndDate = DateTime.Now;
+                                InvalidFiles.Add(batchFile);
+                                Audit.Fail(logsPath, $"{remarks} - {file}");
                                 continue;
                             }
 
-                            ValidFiles.Add(new() {
-                                Checksum = checksum,
-                                Path = file,
-                                LogDirectory = logsPath,
-                                Name = Path.GetFileName(file),
-                                //OTCS = new() { ParentID = 1231230 },
-                                OTCS = new() { ParentID = 1145353 },
-                                BatchFolderPath = filesPath,
-                                SubBatchFolderPath = subBatchFolder
-                            });
+                            batchFile.Checksum = checksum;
+                            ValidFiles.Add(batchFile);
                         }
                     }
 
