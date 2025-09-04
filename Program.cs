@@ -9,7 +9,7 @@ var uploadRetryInterval = 1000 * 60 * 30; // 30 Mins
 var intervalEachRun = 0; // How long we wait to upload the next file
 var otcsUsername = Registry.GetRegistryValue("otuser"); // OTCS account user
 var otcsSecret = Registry.GetRegistryValue("otkey"); // OTCS account pwd
-var otcsApiUrl = "http://192.168.1.185/otcs/cs.exe/api"; // OTCS API url
+var otcsApiUrl = Registry.GetRegistryValue("otcsapiurl"); // OTCS API url
 List<string> recipients = ["melvinjovano2@gmail.com", "melvin.swiftx@outlook.com"]; // To who are we sending the email report
 MailCreds mailCreds = new()
 {
