@@ -1,20 +1,21 @@
 ﻿using UploadRecords.Models;
 using UploadRecords.Services;
+using UploadRecords.Utils;
 
 var logPath = "C:\\zWork\\UploadRecordsLogs"; // Where we store the success and fail logs
 var batchFolder = "C:\\zWork\\UploadRecords\\Batch 1"; // Where the batch folder located
 var uploadCount = 1 + 2; // Success + Error Retry
 var uploadRetryInterval = 1000 * 60 * 30; // 30 Mins
 var intervalEachRun = 0; // How long we wait to upload the next file
-var otcsUsername = "admin";
-var otcsSecret = "P@ssw0rd";
-var otcsApiUrl = "http://192.168.1.185/otcs/cs.exe/api";
-List<string> recipients = ["melvinjovano2@gmail.com", "melvin.swiftx@outlook.com"];
+var otcsUsername = Registry.GetRegistryValue("otuser"); // OTCS account user
+var otcsSecret = Registry.GetRegistryValue("otkey"); // OTCS account pwd
+var otcsApiUrl = "http://192.168.1.185/otcs/cs.exe/api"; // OTCS API url
+List<string> recipients = ["melvinjovano2@gmail.com", "melvin.swiftx@outlook.com"]; // To who are we sending the email report
 MailCreds mailCreds = new()
 {
-    MailAddress = new("melvin@swiftx.co", "Upload Records"),
-    MailSecret = "fLV9Yp8RoefH"
-};
+    MailAddress = new(Registry.GetRegistryValue("emailaddress"), "Upload Records"),
+    MailSecret = Registry.GetRegistryValue("emailkey")
+}; // From who are we sending the email report
 
 // Start Logic
 
