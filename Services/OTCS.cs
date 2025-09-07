@@ -1,5 +1,6 @@
-﻿using RestSharp;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
+using RestSharp;
+using System.Net;
 using UploadRecords.Models.API;
 
 namespace UploadRecords.Services
@@ -62,7 +63,12 @@ namespace UploadRecords.Services
             request.AddParameter("name", Path.GetFileName(filePath));
             request.AddFile("file", filePath);
 
-            var response = await Client.ExecuteAsync<CreateFileResponse>(request);
+            var response = await Client.ExecuteAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
             var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
 
             if(data != null)

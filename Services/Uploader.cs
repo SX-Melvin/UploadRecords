@@ -1,4 +1,5 @@
-﻿using UploadRecords.Enums;
+﻿using System.Net;
+using UploadRecords.Enums;
 using UploadRecords.Models;
 using UploadRecords.Utils;
 
@@ -47,13 +48,65 @@ namespace UploadRecords.Services
                         continue;
                     }
 
-                    var result = await UploadSingleFile(otcs, queue, item, ticket);
-
-                    if (result == 1)
+                    if(ticket == null)
                     {
-                        UpdateProcessedFile(item.File);
-                        queue.Queues.Remove(item);
+                        var getTicket = await otcs.GetTicket();
+                        if (getTicket.Error != null)
+                        {
+                            var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
+                            item.File.Status = BatchFileStatus.Skipped;
+                            item.File.Remarks = remarks;
+                            item.File.EndDate = DateTime.Now;
+                            item.File.Attempt = item.TotalRun;
+                            UpdateProcessedFile(item.File);
+                            Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                            queue.RegisterFile(item.File);
+                            continue;
+                        }
+
+                        ticket = getTicket.Ticket;
                     }
+
+                    if (ticket != null)
+                    {
+                        var result = await UploadSingleFile(otcs, queue, item, ticket);
+
+                        if (result == 1)
+                        {
+                            UpdateProcessedFile(item.File);
+                            queue.Queues.Remove(item);
+                        }
+                        else if (result == 2)
+                        {
+                            var getTicket = await otcs.GetTicket();
+                            if (getTicket.Error != null)
+                            {
+                                var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
+                                item.File.Status = BatchFileStatus.Skipped;
+                                item.File.Remarks = remarks;
+                                item.File.EndDate = DateTime.Now;
+                                item.File.Attempt = item.TotalRun;
+                                UpdateProcessedFile(item.File);
+                                Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                                queue.RegisterFile(item.File);
+                                continue;
+                            }
+
+                            ticket = getTicket.Ticket;
+                        }
+                    }
+                    else
+                    {
+                        var remarks = $"Fail to upload file {item.File.Name} due to ticket is empty";
+                        item.File.Status = BatchFileStatus.Skipped;
+                        item.File.Remarks = remarks;
+                        item.File.EndDate = DateTime.Now;
+                        item.File.Attempt = item.TotalRun;
+                        UpdateProcessedFile(item.File);
+                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                        queue.RegisterFile(item.File);
+                    }
+
                 }
 
                 Thread.Sleep(IntervalBetweenFiles);
@@ -62,16 +115,16 @@ namespace UploadRecords.Services
             Logger.Information($"Upload Completed");
         }
 
-        public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, string? ticket)
+        public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, string ticket)
         {
             int result = 0;
 
-            if (ticket == null)
+            try
             {
-                var getTicket = await otcs.GetTicket();
-                if (getTicket.Error != null)
+                var upload = await otcs.CreateFile(item.File.Path, item.File.OTCS.ParentID, ticket);
+                if (upload.Error != null)
                 {
-                    var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
+                    var remarks = $"Fail to upload file {item.File.Name} due to {upload.Error}";
                     item.File.Status = BatchFileStatus.Skipped;
                     item.File.Remarks = remarks;
                     item.File.EndDate = DateTime.Now;
@@ -81,27 +134,17 @@ namespace UploadRecords.Services
                     queue.RegisterFile(item.File);
                     return result;
                 }
-            }
 
-            var upload = await otcs.CreateFile(item.File.Path, item.File.OTCS.ParentID, ticket);
-            if (upload.Error != null)
-            {
-                var remarks = $"Fail to upload file {item.File.Name} due to {upload.Error}";
-                item.File.Status = BatchFileStatus.Skipped;
-                item.File.Remarks = remarks;
+                Audit.Success(item.File.LogDirectory, $"{item.File.Name} was uploaded with node id {upload.Id} - {item.File.Path}");
                 item.File.EndDate = DateTime.Now;
-                item.File.Attempt = item.TotalRun;
+                item.File.Status = BatchFileStatus.Completed;
                 UpdateProcessedFile(item.File);
-                Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
-                queue.RegisterFile(item.File);
-                return result;
+                result = 1;
             }
-
-            Audit.Success(item.File.LogDirectory, $"{item.File.Name} was uploaded with node id {upload.Id} - {item.File.Path}");
-            item.File.EndDate = DateTime.Now;
-            item.File.Status = BatchFileStatus.Completed;
-            UpdateProcessedFile(item.File);
-            result = 1;
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                result = 2;
+            }
 
             return result;
         }
