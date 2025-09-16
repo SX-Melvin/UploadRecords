@@ -1,16 +1,21 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Configuration;
+using Serilog;
 
 namespace UploadRecords.Utils
 {
     public class Logger
     {
-        public static string logsPath = "logs/uprec_.log";
         static Logger()
         {
+            var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory()) // needed for console apps
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.Console()
-                .WriteTo.File(logsPath,
+                .WriteTo.File(config["Logs:Path"],
                               rollingInterval: RollingInterval.Day,
                               retainedFileCountLimit: 30)
                 .CreateLogger();

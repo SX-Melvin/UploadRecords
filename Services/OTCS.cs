@@ -78,5 +78,41 @@ namespace UploadRecords.Services
 
             return result;
         }
+        
+        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(int nodeID, string? ticket = null) 
+        {
+            GetNodeAncestorsResponse result = new()
+            {
+                Ancestors = []
+            };
+
+            var getTicket = await GetTicket();
+            if (getTicket.Error != null)
+            {
+                result.Error = getTicket.Error;
+                return result;
+            }
+
+            ticket ??= getTicket.Ticket;
+
+            var request = new RestRequest($"v1/nodes/{nodeID}/ancestors", Method.Get);
+
+            request.AddHeader("otcsticket", ticket);
+
+            var response = await Client.ExecuteAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<GetNodeAncestorsResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
     }
 }

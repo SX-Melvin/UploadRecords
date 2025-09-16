@@ -1,9 +1,16 @@
 ﻿using UploadRecords.Models;
 using UploadRecords.Services;
 using UploadRecords.Utils;
+using Microsoft.Extensions.Configuration;
 
-var logPath = "C:\\zWork\\UploadRecordsLogs"; // Where we store the success and fail logs
-var batchFolder = "C:\\zWork\\UploadRecords\\Batch 1"; // Where the batch folder located
+// build configuration
+var config = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory()) // needed for console apps
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
+
+var logPath = config["Audit:Path"]; // Where we store the success and fail logs
+var batchFolder = config["Batch:FolderPath"]; // Where the batch folder located
 var uploadCount = 1 + 2; // Success + Error Retry
 var uploadRetryInterval = 1000 * 60 * 30; // 30 Mins
 var intervalEachRun = 0; // How long we wait to upload the next file
@@ -19,10 +26,11 @@ MailCreds mailCreds = new()
 
 // Start Logic
 
-var scanner = new Scanner(batchFolder, logPath);
-scanner.ScanValidFiles();
-
 var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
+
+var scanner = new Scanner(batchFolder, logPath, int.Parse(config["OTCS:NodeID"]), otcs);
+await scanner.ScanValidFiles();
+
 var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
 var uploader = new Uploader(intervalEachRun);

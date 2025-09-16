@@ -24,11 +24,11 @@ namespace UploadRecords.Services
             while(queue.Queues.Count > 0)
             {
                 // LOGGING PURPOSE
-                var nearest = queue.Queues.OrderBy(x => x.RunAt).FirstOrDefault();
-                if (nearest != null)
-                {
-                    Logger.Information($"The nearest queue is {nearest.RunAt.ToString("MM/dd HH:mm:ss")} - {nearest.File.Path}");
-                }
+                //var nearest = queue.Queues.OrderBy(x => x.RunAt).FirstOrDefault();
+                //if (nearest != null)
+                //{
+                //    Logger.Information($"The nearest queue is {nearest.RunAt.ToString("MM/dd HH:mm:ss")} - {nearest.File.Path}");
+                //}
                 // LOGGING PURPOSE
 
                 var item = queue.GetScheduled();
@@ -42,7 +42,7 @@ namespace UploadRecords.Services
                         item.File.Remarks = remarks;
                         item.File.EndDate = DateTime.Now;
                         item.File.Attempt = item.TotalRun;
-                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                         UpdateProcessedFile(item.File);
                         queue.Queues.Remove(item);
                         continue;
@@ -59,7 +59,7 @@ namespace UploadRecords.Services
                             item.File.EndDate = DateTime.Now;
                             item.File.Attempt = item.TotalRun;
                             UpdateProcessedFile(item.File);
-                            Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                            Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                             queue.RegisterFile(item.File);
                             continue;
                         }
@@ -87,7 +87,7 @@ namespace UploadRecords.Services
                                 item.File.EndDate = DateTime.Now;
                                 item.File.Attempt = item.TotalRun;
                                 UpdateProcessedFile(item.File);
-                                Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                                Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                                 queue.RegisterFile(item.File);
                                 continue;
                             }
@@ -103,7 +103,7 @@ namespace UploadRecords.Services
                         item.File.EndDate = DateTime.Now;
                         item.File.Attempt = item.TotalRun;
                         UpdateProcessedFile(item.File);
-                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                         queue.RegisterFile(item.File);
                     }
 
@@ -130,12 +130,12 @@ namespace UploadRecords.Services
                     item.File.EndDate = DateTime.Now;
                     item.File.Attempt = item.TotalRun;
                     UpdateProcessedFile(item.File);
-                    Audit.Fail(item.File.LogDirectory, $"{remarks} - {item.File.Path}");
+                    Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                     queue.RegisterFile(item.File);
                     return result;
                 }
 
-                Audit.Success(item.File.LogDirectory, $"{item.File.Name} was uploaded with node id {upload.Id} - {item.File.Path}");
+                Audit.Success(item.File.LogDirectory, $"{item.File.Name} was uploaded with node id {upload.Id} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                 item.File.EndDate = DateTime.Now;
                 item.File.Status = BatchFileStatus.Completed;
                 UpdateProcessedFile(item.File);

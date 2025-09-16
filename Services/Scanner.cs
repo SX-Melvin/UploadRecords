@@ -19,19 +19,23 @@ namespace UploadRecords.Services
         public string ControlFileName = "metadata.xlsx";
         public string ManifestFileName = "manifest-sha256.txt";
         public string DataFolder = "data";
+        public int NodeID = 2000;
         public ControlFile ControlFile;
         public List<string> FoldersContainsFile = ["master", "access"];
         public List<string> ValidFileExtensions = [".tiff", ".pdf"];
         public List<BatchFile> InvalidFiles = [];
         public List<BatchFile> ValidFiles = [];
+        public OTCS OTCS;
 
-        public Scanner(string batchPath, string logPath)
+        public Scanner(string batchPath, string logPath, int nodeID, OTCS otcs)
         {
             FolderPath = batchPath;
             LogPath = logPath;
+            NodeID = nodeID;
+            OTCS = otcs;
         }
 
-        public void ScanValidFiles()
+        public async Task ScanValidFiles()
         {
             try
             {
@@ -48,6 +52,8 @@ namespace UploadRecords.Services
                 }
 
                 ControlFile = metadata;
+
+                var getAncestors = await OTCS.GetNodeAncestors(NodeID);
 
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {
@@ -77,11 +83,10 @@ namespace UploadRecords.Services
                                 Path = file,
                                 LogDirectory = logsPath,
                                 Name = Path.GetFileName(file),
-                                //OTCS = new() { ParentID = 1231230 },
                                 StartDate = DateTime.Now,
                                 Attempt = 1,
                                 SizeInKB = fileInfo.Length / 1024,
-                                OTCS = new() { ParentID = 1145353 },
+                                OTCS = new() { ParentID = NodeID, Ancestors = getAncestors.Ancestors },
                                 BatchFolderPath = filesPath,
                                 SubBatchFolderPath = subBatchFolder
                             };
@@ -98,7 +103,7 @@ namespace UploadRecords.Services
                                 batchFile.Remarks = remarks;
                                 batchFile.EndDate = DateTime.Now;
                                 InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {file}");
+                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
                                 continue;
                             }
 
@@ -109,7 +114,7 @@ namespace UploadRecords.Services
                                 batchFile.Remarks = remarks;
                                 batchFile.EndDate = DateTime.Now;
                                 InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {file}");
+                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
                                 continue;
                             }
 
@@ -126,7 +131,7 @@ namespace UploadRecords.Services
                                 batchFile.Remarks = remarks;
                                 batchFile.EndDate = DateTime.Now;
                                 InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {file}");
+                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
                                 continue;
                             }
 
@@ -137,7 +142,7 @@ namespace UploadRecords.Services
                                 batchFile.Remarks = remarks;
                                 batchFile.EndDate = DateTime.Now;
                                 InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {file}");
+                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
                                 continue;
                             }
 

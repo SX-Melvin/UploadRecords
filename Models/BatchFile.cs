@@ -1,4 +1,6 @@
-﻿using UploadRecords.Enums;
+﻿using DocumentFormat.OpenXml.Office2019.Drawing.Model3D;
+using UploadRecords.Enums;
+using UploadRecords.Models.API;
 
 namespace UploadRecords.Models
 {
@@ -22,5 +24,6 @@ namespace UploadRecords.Models
     public class ValidFileOTCS
     {
         public required int ParentID { get; set; }
+        public required List<GetNodeAcestorsAncestor> Ancestors { get; set; }
     }
 }
