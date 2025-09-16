@@ -31,8 +31,8 @@ namespace UploadRecords.Utils
                 Port = 587,
                 EnableSsl = false,
                 DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(mailCreds.MailAddress.Address, mailCreds.MailSecret)
+                UseDefaultCredentials = true,
+                //Credentials = new NetworkCredential(mailCreds.MailAddress.Address, mailCreds.MailSecret)
             };
 
             using (var message = new MailMessage())

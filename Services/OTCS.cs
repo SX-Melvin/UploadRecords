@@ -2,6 +2,7 @@
 using RestSharp;
 using System.Net;
 using UploadRecords.Models.API;
+using UploadRecords.Utils;
 
 namespace UploadRecords.Services
 {
@@ -32,6 +33,8 @@ namespace UploadRecords.Services
 
             var response = await Client.ExecuteAsync<GetTicketResponse>(request);
 
+            Logger.Information("v1/auth: " + response.Content);
+
             var data = JsonConvert.DeserializeObject<GetTicketResponse>(response.Content);
 
             if(data != null)
@@ -42,18 +45,9 @@ namespace UploadRecords.Services
             return result;
         }
 
-        public async Task<CreateFileResponse> CreateFile(string filePath, int parentID, string? ticket = null) 
+        public async Task<CreateFileResponse> CreateFile(string filePath, int parentID, string ticket) 
         {
             CreateFileResponse result = new();
-
-            var getTicket = await GetTicket();
-            if (getTicket.Error != null)
-            {
-                result.Error = getTicket.Error;
-                return result;
-            }
-
-            ticket ??= getTicket.Ticket;
 
             var request = new RestRequest("v1/nodes", Method.Post);
 
@@ -64,6 +58,8 @@ namespace UploadRecords.Services
             request.AddFile("file", filePath);
 
             var response = await Client.ExecuteAsync(request);
+            Logger.Information("v1/nodes: " + response.Content);
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
@@ -79,27 +75,20 @@ namespace UploadRecords.Services
             return result;
         }
         
-        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(int nodeID, string? ticket = null) 
+        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(int nodeID, string ticket) 
         {
             GetNodeAncestorsResponse result = new()
             {
                 Ancestors = []
             };
 
-            var getTicket = await GetTicket();
-            if (getTicket.Error != null)
-            {
-                result.Error = getTicket.Error;
-                return result;
-            }
-
-            ticket ??= getTicket.Ticket;
-
             var request = new RestRequest($"v1/nodes/{nodeID}/ancestors", Method.Get);
 
             request.AddHeader("otcsticket", ticket);
 
             var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v1/nodes/{nodeID}/ancestors" + response.Content);
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);

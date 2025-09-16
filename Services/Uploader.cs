@@ -48,6 +48,7 @@ namespace UploadRecords.Services
                         continue;
                     }
 
+                    // Renew The Ticket
                     if(ticket == null)
                     {
                         var getTicket = await otcs.GetTicket();

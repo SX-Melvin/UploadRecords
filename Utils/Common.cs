@@ -11,6 +11,10 @@ namespace UploadRecords.Utils
     {
         public static string ListAncestors(List<GetNodeAcestorsAncestor> ancestors)
         {
+            if(ancestors == null)
+            {
+                return "";
+            }
             return string.Join(":", ancestors.Select(x => x.Name));
         }
     }
