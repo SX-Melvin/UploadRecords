@@ -52,8 +52,16 @@ namespace UploadRecords.Services
                 }
 
                 ControlFile = metadata;
+                string ticket = null;
 
-                var getAncestors = await OTCS.GetNodeAncestors(NodeID);
+                var getTicket = await OTCS.GetTicket();
+                if (getTicket.Error != null)
+                {
+                    Logger.Error("Process aborted due to: " + getTicket.Error);
+                    return;
+                }
+                
+                var getAncestors = await OTCS.GetNodeAncestors(NodeID, getTicket.Ticket);
 
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {
