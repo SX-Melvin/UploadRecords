@@ -92,7 +92,7 @@ namespace UploadRecords.Utils
                 client.Connect("192.168.1.79", 587, SecureSocketOptions.None);
 
                 // authenticate
-                //client.Authenticate("noreply@mndrmsapp.dev", "P@ssw0rd");
+                client.Authenticate("noreply@mndrmsapp.dev", "P@ssw0rd");
 
                 client.Send(message);
                 client.Disconnect(true);

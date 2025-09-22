@@ -74,7 +74,36 @@ namespace UploadRecords.Services
 
             return result;
         }
-        
+
+        public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket)
+        {
+            CreateFolderResponse result = new();
+
+            var request = new RestRequest("v1/nodes", Method.Post);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("type", 0);
+            request.AddParameter("parent_id", parentID);
+            request.AddParameter("name", folderName);
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information("v1/nodes: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFolderResponse>(response.Content);
+
+            if (data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+
         public async Task<GetNodeAncestorsResponse> GetNodeAncestors(int nodeID, string ticket) 
         {
             GetNodeAncestorsResponse result = new()

@@ -10,6 +10,7 @@ var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
+var dbConnectionStr = config["Database:ConnectionString"]; // Db Connection
 var logPath = config["Audit:Path"]; // Where we store the success and fail logs
 var batchFolder = config["Batch:FolderPath"]; // Where the batch folder located
 var uploadCount = 1 + 2; // Success + Error Retry
@@ -25,6 +26,8 @@ MailCreds mailCreds = new()
     MailSecret = Registry.GetRegistryValue("emailkey")
 }; // From who are we sending the email report
 
+Logger.Information("Connection String " + dbConnectionStr);
+
 Logger.Information("Logs Path: " + logPath);
 Logger.Information("Batch Path: " + batchFolder);
 
@@ -39,18 +42,24 @@ Logger.Information("Email Secret: " + new string('*', Registry.GetRegistryValue(
 
 // Start Logic
 
+var csdb = new CSDB(dbConnectionStr);
+
+Console.WriteLine(csdb.GetNodeFromParentByName("_a", 2000).DataID);
+
 var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
 
-var scanner = new Scanner(batchFolder, logPath, int.Parse(config["OTCS:NodeID"]), otcs);
-await scanner.ScanValidFiles();
+Console.WriteLine(await Common.CreateFolderIfNotExist(csdb, otcs, ["EnterPrise", "_AA", "1", "2"]));
 
-var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
+//var scanner = new Scanner(batchFolder, logPath, int.Parse(config["OTCS:NodeID"]), otcs);
+//await scanner.ScanValidFiles();
 
-var uploader = new Uploader(intervalEachRun);
-await uploader.UploadFiles(otcs, queue);
+//var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
-var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], recipients, mailCreds);
-summarizer.GenerateReport();
-summarizer.SendMail();
+//var uploader = new Uploader(intervalEachRun);
+//await uploader.UploadFiles(otcs, queue);
+
+//var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], recipients, mailCreds);
+//summarizer.GenerateReport();
+//summarizer.SendMail();
 
 // End Logic
