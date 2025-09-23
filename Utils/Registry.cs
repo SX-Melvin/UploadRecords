@@ -24,7 +24,7 @@ namespace UploadRecords.Utils
         private static string Unprotect(string encryptedText)
         {
             byte[] data = Convert.FromBase64String(encryptedText);
-            byte[] decrypted = ProtectedData.Unprotect(data, null, DataProtectionScope.CurrentUser);
+            byte[] decrypted = ProtectedData.Unprotect(data, null, DataProtectionScope.LocalMachine);
             return Encoding.UTF8.GetString(decrypted);
         }
     }
