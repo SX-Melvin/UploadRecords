@@ -52,7 +52,6 @@ namespace UploadRecords.Services
                 }
 
                 ControlFile = metadata;
-                string ticket = null;
 
                 var getTicket = await OTCS.GetTicket();
                 if (getTicket.Error != null)
@@ -60,17 +59,24 @@ namespace UploadRecords.Services
                     Logger.Error("Process aborted due to: " + getTicket.Error);
                     return;
                 }
-                
+
                 var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath);
+                var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
 
-                var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket);
+                if (getAncestors.Error != null)
+                {
+                    Logger.Error("Process aborted due to: " + getAncestors.Error);
+                    return;
+                }
 
+                // Loop each batch folder directories
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {
                     Logger.Information($"Processing {subBatchFolder}");
 
                     string manifestFilePath = Path.Combine(subBatchFolder, ManifestFileName);
                     var manifest = CSV.ReadManifest(manifestFilePath);
+
 
                     // Manifest not found
                     if (manifest == null)
@@ -81,8 +87,25 @@ namespace UploadRecords.Services
 
                     foreach (var folder in FoldersContainsFile)
                     {
+                        var folderName = Path.GetFileName(folder);
                         string filesPath = Path.Combine(Path.Combine(subBatchFolder, DataFolder), folder);
                         var logsPath = Path.Combine(LogPath, Path.GetFileName(subBatchFolder));
+                        var ancestors = getAncestors.Ancestors;
+                        var createBatchFolder = await OTCS.CreateFolder(folderName, nodeId, getTicket.Ticket!);
+
+                        if (createBatchFolder.Error != null)
+                        {
+                            Logger.Error("Process aborted due to: " + createBatchFolder.Error);
+                            continue;
+                        }
+
+                        ancestors.Add(new()
+                        {
+                            Id = createBatchFolder.Id,
+                            Name = folderName,
+                            ParentID = nodeId,
+                            Type = 0,
+                        });
 
                         foreach (var file in Directory.GetFiles(filesPath))
                         {
@@ -96,7 +119,7 @@ namespace UploadRecords.Services
                                 StartDate = DateTime.Now,
                                 Attempt = 1,
                                 SizeInKB = fileInfo.Length / 1024,
-                                OTCS = new() { ParentID = nodeId, Ancestors = getAncestors.Ancestors },
+                                OTCS = new() { ParentID = nodeId, Ancestors = ancestors },
                                 BatchFolderPath = filesPath,
                                 SubBatchFolderPath = subBatchFolder
                             };

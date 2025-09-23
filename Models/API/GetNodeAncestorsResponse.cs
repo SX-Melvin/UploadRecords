@@ -14,7 +14,7 @@ namespace UploadRecords.Models.API
 
     public class GetNodeAcestorsAncestor 
     { 
-        public int Id { get; set; }
+        public long Id { get; set; }
         public int Type { get; set; }
         public string Name { get; set; }
 
@@ -22,7 +22,7 @@ namespace UploadRecords.Models.API
         public int VolumeId { get; set; }
 
         [JsonProperty("parent_id")]
-        public int ParentID { get; set; }   
+        public long ParentID { get; set; }   
 
         [JsonProperty("type_name")]
         public string TypeName { get; set; }   

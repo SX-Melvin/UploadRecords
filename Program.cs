@@ -38,8 +38,6 @@ Logger.Information("Email Host: " + emailHost);
 Logger.Information("Email From: " + emailFrom);
 Logger.Information("Email Port: " + emailPort);
 Logger.Information("Recipients: " + string.Join(",", recipients));
-//Logger.Information("Email Sender: " + Registry.GetRegistryValue("emailaddress"));
-//Logger.Information("Email Secret: " + new string('*', Registry.GetRegistryValue("emailkey")?.Length ?? 0));
 
 // Start Logic
 
@@ -62,6 +60,6 @@ await uploader.UploadFiles(otcs, queue);
 
 var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], mailConfig, recipients);
 summarizer.GenerateReport();
-summarizer.SendMail();
+//summarizer.SendMail();
 
 // End Logic
