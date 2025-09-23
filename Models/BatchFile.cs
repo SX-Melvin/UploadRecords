@@ -23,7 +23,7 @@ namespace UploadRecords.Models
 
     public class ValidFileOTCS
     {
-        public required int ParentID { get; set; }
+        public required long ParentID { get; set; }
         public required List<GetNodeAcestorsAncestor> Ancestors { get; set; }
     }
 }

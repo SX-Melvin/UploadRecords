@@ -96,6 +96,8 @@ namespace UploadRecords.Utils
                 result.FolderRef = row["FolderRef"].ToString();
                 result.FolderTitle = row["FolderTitle"].ToString();
                 result.FolderSecurityGrading = row["FolderSecurityGrading"].ToString();
+                result.FolderPath = (row["FolderPath"].ToString() ?? "").Split(":").ToList();
+                result.FolderSensitivityClassification = row["FolderSensitivityClassification"].ToString();
             }
 
             return result;

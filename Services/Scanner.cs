@@ -19,20 +19,20 @@ namespace UploadRecords.Services
         public string ControlFileName = "metadata.xlsx";
         public string ManifestFileName = "manifest-sha256.txt";
         public string DataFolder = "data";
-        public int NodeID = 2000;
         public ControlFile ControlFile;
         public List<string> FoldersContainsFile = ["master", "access"];
         public List<string> ValidFileExtensions = [".tiff", ".pdf"];
         public List<BatchFile> InvalidFiles = [];
         public List<BatchFile> ValidFiles = [];
         public OTCS OTCS;
+        public CSDB CSDB;
 
-        public Scanner(string batchPath, string logPath, int nodeID, OTCS otcs)
+        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs)
         {
             FolderPath = batchPath;
             LogPath = logPath;
-            NodeID = nodeID;
             OTCS = otcs;
+            CSDB = csdb;
         }
 
         public async Task ScanValidFiles()
@@ -61,7 +61,9 @@ namespace UploadRecords.Services
                     return;
                 }
                 
-                var getAncestors = await OTCS.GetNodeAncestors(NodeID, getTicket.Ticket);
+                var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath);
+
+                var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket);
 
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
                 {
@@ -94,7 +96,7 @@ namespace UploadRecords.Services
                                 StartDate = DateTime.Now,
                                 Attempt = 1,
                                 SizeInKB = fileInfo.Length / 1024,
-                                OTCS = new() { ParentID = NodeID, Ancestors = getAncestors.Ancestors },
+                                OTCS = new() { ParentID = nodeId, Ancestors = getAncestors.Ancestors },
                                 BatchFolderPath = filesPath,
                                 SubBatchFolderPath = subBatchFolder
                             };

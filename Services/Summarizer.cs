@@ -13,13 +13,11 @@ namespace UploadRecords.Services
         public string ReportPath { get; set; }
         public string ReportFileName { get; set; }
         public string BatchNameAndNumber { get; set; }
-        public MailCreds MailCreds { get; set; }
-        public Summarizer(Scanner scanner, List<BatchFile> files, List<string> emailAddresses, MailCreds mailCreds)
+        public Summarizer(Scanner scanner, List<BatchFile> files, List<string> emailAddresses)
         {
             BatchFiles = files.OrderBy(x => x.StartDate).ToList(); // Sort Start Time ASC
             Scanner = scanner;
             EmailAddresses = emailAddresses;
-            this.MailCreds = mailCreds;
             ReportFileName = $"{DateTime.Now.ToString("ddMMyyyy")}_{Path.GetFileName(Scanner.FolderPath)}_{Scanner.ControlFile.BatchNumber}.xlsx";
             BatchNameAndNumber = $"{Path.GetFileName(Scanner.FolderPath)}_{Scanner.ControlFile.BatchNumber}";
         }
@@ -31,7 +29,7 @@ namespace UploadRecords.Services
 
         public void SendMail()
         {
-            Mail.SendReportMail(EmailAddresses, this.MailCreds, this);
+            Mail.SendReportMail(EmailAddresses, this);
         }
     }
 }

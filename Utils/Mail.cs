@@ -1,15 +1,13 @@
-﻿using MailKit.Security;
-using MimeKit;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using UploadRecords.Models;
+﻿using UploadRecords.Models;
 using UploadRecords.Services;
+using System.Net;
+using System.Net.Mail;
 
 namespace UploadRecords.Utils
 {
     public static class Mail
     {
-        public static void SendReportMail(List<string> recipients, MailCreds mailCreds, Summarizer summarizer)
+        public static void SendReportMail(List<string> recipients, Summarizer summarizer)
         {
             Logger.Information("Sending email");
 
@@ -27,75 +25,34 @@ namespace UploadRecords.Utils
                 Thank you.
             """;
 
-            //var smtp = new SmtpClient
-            //{
-            //    Host = "mail.swiftx.co",
-            //    Port = 587,
-            //    EnableSsl = false,
-            //    DeliveryMethod = SmtpDeliveryMethod.Network,
-            //    UseDefaultCredentials = true,
-            //    //Credentials = new NetworkCredential(mailCreds.MailAddress.Address, mailCreds.MailSecret)
-            //};
-
-            //using (var message = new MailMessage())
-            //{
-            //    message.From = mailCreds.MailAddress;
-
-            //    foreach (var email in recipients)
-            //    {
-            //        message.To.Add(email);
-            //    }
-
-            //    message.Subject = subject;
-            //    message.Body = body;
-            //    message.IsBodyHtml = true;
-
-            //    if (!string.IsNullOrEmpty(summarizer.ReportPath))
-            //    {
-            //        message.Attachments.Add(new Attachment(summarizer.ReportPath));
-            //    }
-
-            //    smtp.Send(message);
-            //}
-
-            // 1. Build the message
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("No Reply", "noreply@mndrmsapp.dev"));
-
-            foreach (var email in recipients)
+            var smtp = new SmtpClient
             {
-                message.To.Add(MailboxAddress.Parse(email));
-            }
-
-            message.Subject = subject;
-
-            var builder = new BodyBuilder
-            {
-                HtmlBody = body // or TextBody = body for plain text
+                Host = "192.168.1.127",
+                Port = 111,
+                EnableSsl = false,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = true,
             };
 
-            if (!string.IsNullOrEmpty(summarizer.ReportPath))
+            using (var message = new MailMessage())
             {
-                builder.Attachments.Add(summarizer.ReportPath);
-            }
+                message.From = new("info@244.com");
 
-            message.Body = builder.ToMessageBody();
+                foreach (var email in recipients)
+                {
+                    message.To.Add(email);
+                }
 
-            // 2. Send it
-            using (var client = new SmtpClient())
-            {
-                // accept all SSL certificates (for dev only)
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                message.Subject = subject;
+                message.Body = body;
+                message.IsBodyHtml = true;
 
-                // connect to your hMailServer
-                // Port 587 = STARTTLS. If you haven't enabled STARTTLS in hMailServer, use SecureSocketOptions.None.
-                client.Connect("192.168.1.79", 587, SecureSocketOptions.None);
+                if (!string.IsNullOrEmpty(summarizer.ReportPath))
+                {
+                    message.Attachments.Add(new Attachment(summarizer.ReportPath));
+                }
 
-                // authenticate
-                client.Authenticate("noreply@mndrmsapp.dev", "P@ssw0rd");
-
-                client.Send(message);
-                client.Disconnect(true);
+                smtp.Send(message);
             }
 
             Logger.Information("Email sent");

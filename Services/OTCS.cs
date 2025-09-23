@@ -45,7 +45,7 @@ namespace UploadRecords.Services
             return result;
         }
 
-        public async Task<CreateFileResponse> CreateFile(string filePath, int parentID, string ticket) 
+        public async Task<CreateFileResponse> CreateFile(string filePath, long parentID, string ticket) 
         {
             CreateFileResponse result = new();
 
@@ -104,7 +104,7 @@ namespace UploadRecords.Services
             return result;
         }
 
-        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(int nodeID, string ticket) 
+        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(long nodeID, string ticket) 
         {
             GetNodeAncestorsResponse result = new()
             {

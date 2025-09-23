@@ -26,7 +26,7 @@ MailCreds mailCreds = new()
     MailSecret = Registry.GetRegistryValue("emailkey")
 }; // From who are we sending the email report
 
-Logger.Information("Connection String " + dbConnectionStr);
+Logger.Information("DB Connection String " + dbConnectionStr);
 
 Logger.Information("Logs Path: " + logPath);
 Logger.Information("Batch Path: " + batchFolder);
@@ -42,24 +42,19 @@ Logger.Information("Email Secret: " + new string('*', Registry.GetRegistryValue(
 
 // Start Logic
 
+var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
 var csdb = new CSDB(dbConnectionStr);
 
-Console.WriteLine(csdb.GetNodeFromParentByName("_a", 2000).DataID);
+var scanner = new Scanner(batchFolder, logPath, csdb, otcs);
+await scanner.ScanValidFiles();
 
-var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
+var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
-Console.WriteLine(await Common.CreateFolderIfNotExist(csdb, otcs, ["EnterPrise", "_AA", "1", "2"]));
+var uploader = new Uploader(intervalEachRun);
+await uploader.UploadFiles(otcs, queue);
 
-//var scanner = new Scanner(batchFolder, logPath, int.Parse(config["OTCS:NodeID"]), otcs);
-//await scanner.ScanValidFiles();
-
-//var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
-
-//var uploader = new Uploader(intervalEachRun);
-//await uploader.UploadFiles(otcs, queue);
-
-//var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], recipients, mailCreds);
-//summarizer.GenerateReport();
-//summarizer.SendMail();
+var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], recipients);
+summarizer.GenerateReport();
+summarizer.SendMail();
 
 // End Logic
