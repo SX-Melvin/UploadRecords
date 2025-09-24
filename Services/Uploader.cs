@@ -146,8 +146,8 @@ namespace UploadRecords.Services
                 UpdateProcessedFile(item.File);
 
                 // Update File Categories
-                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertRecordCategoryToJSON(RecordCategory, item.File.ControlFile), ticket);
-                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertArchiveCategoryToJSON(ArchiveCategory, item.File.ControlFile), ticket);
+                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertRecordCategoryToJSON(RecordCategory, item.File.ControlFile), RecordCategory.ID, ticket);
+                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertArchiveCategoryToJSON(ArchiveCategory, item.File.ControlFile), ArchiveCategory.ID, ticket);
 
                 Audit.Success(item.File.LogDirectory, $"{item.File.Name} categories was updated - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
 

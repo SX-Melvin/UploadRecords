@@ -62,6 +62,6 @@ await uploader.UploadFiles(otcs, queue);
 
 var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], mailConfig, recipients);
 summarizer.GenerateReport();
-//summarizer.SendMail();
+summarizer.SendMail();
 
 // End Logic

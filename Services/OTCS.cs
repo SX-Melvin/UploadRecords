@@ -174,7 +174,7 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<ApplyCategoryResponse> ApplyCategoryOnNode(long nodeID, string body, string ticket)
+        public async Task<ApplyCategoryResponse> ApplyCategoryOnNode(long nodeID, string body, long catID, string ticket)
         {
             ApplyCategoryResponse result = new();
 
@@ -186,6 +186,43 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/categories body: " + body);
             Logger.Information($"v1/nodes/{nodeID}/categories: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+
+                // The category already exist, lets update it then
+                if(result.Error != null && result.Error.Contains("already exists"))
+                {
+                    var updateCat = await UpdateCategoryOnNode(catID, nodeID, body, ticket);
+                    if (updateCat != null && updateCat.Error == null)
+                    {
+                        result.Error = null;
+                    }
+                }
+            }
+
+            return result;
+        }
+        public async Task<ApplyCategoryResponse> UpdateCategoryOnNode(long catID, long nodeID, string body, string ticket)
+        {
+            ApplyCategoryResponse result = new();
+
+            var request = new RestRequest($"v1/nodes/{nodeID}/categories/{catID}", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", body);
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v1/nodes/{nodeID}/categories/{catID} body: " + body);
+            Logger.Information($"v1/nodes/{nodeID}/categories/{catID}: " + response.Content);
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
