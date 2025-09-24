@@ -99,6 +99,47 @@ namespace UploadRecords.Services
             if (data != null)
             {
                 result = data;
+
+                // Folder with that name already exists, lets get the folder directly
+                if(result.Error != null && result.Error.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                {
+                    var getFolder = await GetNodeFromParentByName(folderName, parentID, 0, ticket);
+
+                    if (getFolder != null && getFolder.Results.Count > 0) 
+                    {
+                        result.Id = getFolder.Results[0].Data.Properties.Id;
+                        result.Error = null;
+                    }
+                }
+            }
+
+            return result;
+        }
+        
+        public async Task<GetNodeSubnodesResponse> GetNodeFromParentByName(string nodeName, long parentID, int type, string ticket, int limit = 1)
+        {
+            GetNodeSubnodesResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{parentID}/nodes", Method.Get);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddQueryParameter("where_type", type);
+            request.AddQueryParameter("where_name", nodeName);
+            request.AddQueryParameter("limit", limit);
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{parentID}/nodes: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<GetNodeSubnodesResponse>(response.Content);
+
+            if (data != null)
+            {
+                result = data;
             }
 
             return result;

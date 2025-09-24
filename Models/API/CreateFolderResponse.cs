@@ -8,6 +8,6 @@ namespace UploadRecords.Models.API
 {
     public class CreateFolderResponse : CommonResponse
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
     }
 }
