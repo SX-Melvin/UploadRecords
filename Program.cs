@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System.Linq;
 using UploadRecords.Models;
 using UploadRecords.Services;
 using UploadRecords.Utils;
@@ -37,9 +36,12 @@ Logger.Information("NodeID: " + config["OTCS:NodeID"]);
 Logger.Information("Email Host: " + emailHost);
 Logger.Information("Email From: " + emailFrom);
 Logger.Information("Email Port: " + emailPort);
-Logger.Information("Recipients: " + string.Join(",", recipients));
+Logger.Information("Recipients: " + string.Join(", ", recipients));
 
 // Start Logic
+
+var archiveCat = Configuration.GetArchiveCategories(config);
+var recordCat = Configuration.GetRecordCategories(config);
 
 var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
 var csdb = new CSDB(dbConnectionStr);
@@ -55,7 +57,7 @@ await scanner.ScanValidFiles();
 
 var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
-var uploader = new Uploader(intervalEachRun);
+var uploader = new Uploader(intervalEachRun, archiveCat, recordCat);
 await uploader.UploadFiles(otcs, queue);
 
 var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], mailConfig, recipients);

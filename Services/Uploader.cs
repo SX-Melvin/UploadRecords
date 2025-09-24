@@ -9,10 +9,14 @@ namespace UploadRecords.Services
     {
         public int IntervalBetweenFiles { get; set; } = 0;
         public List<BatchFile> ProcessedFiles = [];
+        public CategoryConfiguration<ArchiveCategory> ArchiveCategory;
+        public CategoryConfiguration<_RecordCategory> RecordCategory;
         
-        public Uploader(int intervalBetweenFiles)
+        public Uploader(int intervalBetweenFiles, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory)
         {
             IntervalBetweenFiles = intervalBetweenFiles;
+            ArchiveCategory = archiveCategory;
+            RecordCategory = recordCategory;
         }
 
         public async Task UploadFiles(OTCS otcs, Queue queue) 
@@ -140,6 +144,13 @@ namespace UploadRecords.Services
                 item.File.EndDate = DateTime.Now;
                 item.File.Status = BatchFileStatus.Completed;
                 UpdateProcessedFile(item.File);
+
+                // Update File Categories
+                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertRecordCategoryToJSON(RecordCategory, item.File.ControlFile), ticket);
+                await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertArchiveCategoryToJSON(ArchiveCategory, item.File.ControlFile), ticket);
+
+                Audit.Success(item.File.LogDirectory, $"{item.File.Name} categories was updated - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
+
                 result = 1;
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)

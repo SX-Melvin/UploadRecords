@@ -114,12 +114,13 @@ namespace UploadRecords.Services
 
                             var batchFile = new BatchFile()
                             {
+                                ControlFile = ControlFile,
                                 Path = file,
                                 LogDirectory = logsPath,
                                 Name = Path.GetFileName(file),
                                 StartDate = DateTime.Now,
                                 Attempt = 1,
-                                SizeInKB = fileInfo.Length / 1024,
+                                SizeInKB = (double)fileInfo.Length / 1024,
                                 OTCS = new() { ParentID = createBatchFolder.Id, Ancestors = ancestors },
                                 BatchFolderPath = filesPath,
                                 SubBatchFolderPath = subBatchFolder

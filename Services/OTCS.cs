@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using RestSharp;
 using System.Net;
+using UploadRecords.Models;
 using UploadRecords.Models.API;
 using UploadRecords.Utils;
 
@@ -165,6 +166,33 @@ namespace UploadRecords.Services
             }
 
             var data = JsonConvert.DeserializeObject<GetNodeAncestorsResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+        public async Task<ApplyCategoryResponse> ApplyCategoryOnNode(long nodeID, string body, string ticket)
+        {
+            ApplyCategoryResponse result = new();
+
+            var request = new RestRequest($"v1/nodes/{nodeID}/categories", Method.Post);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", body);
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v1/nodes/{nodeID}/categories body: " + body);
+            Logger.Information($"v1/nodes/{nodeID}/categories: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
 
             if(data != null)
             {
