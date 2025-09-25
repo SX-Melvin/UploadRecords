@@ -52,6 +52,8 @@ var mailConfig = new MailConfiguration()
     Port = emailPort
 };
 
+// TODO: 1. Scan by folder path
+// TODO: 2. Loop each scan result to queue
 var scanner = new Scanner(batchFolder, logPath, csdb, otcs);
 await scanner.ScanValidFiles();
 

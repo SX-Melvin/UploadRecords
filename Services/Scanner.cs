@@ -18,7 +18,6 @@ namespace UploadRecords.Services
         public string LogPath;
         public string ControlFileName = "metadata.xlsx";
         public string ManifestFileName = "manifest-sha256.txt";
-        public string DataFolder = "data";
         public ControlFile ControlFile;
         public List<string> FoldersContainsFile = ["master", "access"];
         public List<string> ValidFileExtensions = [".tiff", ".pdf"];
@@ -41,6 +40,7 @@ namespace UploadRecords.Services
             {
                 Logger.Information($"Beginning Scanning");
 
+                string name = Path.GetFileName(FolderPath);
                 string controlFilePath = Path.Combine(FolderPath, ControlFileName);
                 var metadata = Excel.ReadControlFile(controlFilePath);
 
@@ -70,8 +70,25 @@ namespace UploadRecords.Services
                     return;
                 }
 
+                var createFolder = await OTCS.CreateFolder(name, nodeId, getTicket.Ticket!);
+
+                // Failed to create batch folder
+                if (createFolder.Error != null)
+                {
+                    Logger.Error("Process aborted due to: " + createFolder.Error);
+                    return;
+                }
+
+                ancestors.Add(new()
+                {
+                    Id = createFolder.Id,
+                    Name = name,
+                    ParentID = nodeId,
+                    Type = 0
+                });
+
                 // Loop each batch folder directories
-                foreach (var subBatchFolder in Directory.GetDirectories(FolderPath))
+                foreach (var subBatchFolder in Directory.GetDirectories(FolderPath)) // subBatchFolder = CF-0001
                 {
                     Logger.Information($"Processing {subBatchFolder}");
 
@@ -87,7 +104,7 @@ namespace UploadRecords.Services
                         continue;
                     }
 
-                    var createBatchFolder = await OTCS.CreateFolder(batchFolderName, nodeId, getTicket.Ticket!);
+                    var createBatchFolder = await OTCS.CreateFolder(batchFolderName, createFolder.Id, getTicket.Ticket!);
                     
                     // Failed to create batch folder
                     if (createBatchFolder.Error != null)
@@ -100,89 +117,130 @@ namespace UploadRecords.Services
                     {
                         Id = createBatchFolder.Id,
                         Name = batchFolderName,
-                        ParentID = nodeId,
+                        ParentID = createFolder.Id,
                         Type = 0
                     });
 
-                    foreach (var folder in FoldersContainsFile)
+                    foreach (var fileRefFolder in Directory.GetDirectories(subBatchFolder))
                     {
-                        string filesPath = Path.Combine(Path.Combine(subBatchFolder, DataFolder), folder);
+                        var fileRefFolderName = Path.GetFileName(fileRefFolder);
+                        var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, createBatchFolder.Id, getTicket.Ticket!);
 
-                        foreach (var file in Directory.GetFiles(filesPath))
+                        // Failed to create batch folder
+                        if (createFileRefFolder.Error != null)
                         {
-                            var fileInfo = new FileInfo(file);
+                            Logger.Error("Process aborted due to: " + createFileRefFolder.Error);
+                            continue;
+                        }
 
-                            var batchFile = new BatchFile()
+                        ancestors.Add(new()
+                        {
+                            Id = createFileRefFolder.Id,
+                            Name = fileRefFolderName,
+                            ParentID = createBatchFolder.Id,
+                            Type = 0
+                        });
+
+                        foreach (var folderFile in FoldersContainsFile)
+                        {
+                            var filesPath = Path.Combine(fileRefFolder, folderFile);
+
+                            if(Path.Exists(filesPath))
                             {
-                                ControlFile = ControlFile,
-                                Path = file,
-                                LogDirectory = logsPath,
-                                Name = Path.GetFileName(file),
-                                StartDate = DateTime.Now,
-                                Attempt = 1,
-                                SizeInKB = (double)fileInfo.Length / 1024,
-                                OTCS = new() { ParentID = createBatchFolder.Id, Ancestors = ancestors },
-                                BatchFolderPath = filesPath,
-                                SubBatchFolderPath = subBatchFolder
-                            };
+                                var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!);
 
-                            Logger.Information($"Processing {file}");
-                            var fileName = Path.GetFileName(file);
+                                // Failed to create batch folder
+                                if (createFileFolder.Error != null)
+                                {
+                                    Logger.Error("Process aborted due to: " + createFileFolder.Error);
+                                    continue;
+                                }
 
-                            // Check file extensions
-                            var ext = Path.GetExtension(file).ToLowerInvariant();
-                            if (!ValidFileExtensions.Contains(ext))
-                            {
-                                var remarks = $"File {fileName} has no valid extension";
-                                batchFile.Status = BatchFileStatus.Failed;
-                                batchFile.Remarks = remarks;
-                                batchFile.EndDate = DateTime.Now;
-                                InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                continue;
+                                ancestors.Add(new()
+                                {
+                                    Id = createFileFolder.Id,
+                                    Name = folderFile,
+                                    ParentID = createFileRefFolder.Id,
+                                    Type = 0
+                                });
+
+                                foreach (var file in Directory.GetFiles(filesPath))
+                                {
+                                    var fileInfo = new FileInfo(file);
+
+                                    var batchFile = new BatchFile()
+                                    {
+                                        ControlFile = ControlFile,
+                                        Path = file,
+                                        LogDirectory = logsPath,
+                                        Name = Path.GetFileName(file),
+                                        StartDate = DateTime.Now,
+                                        Attempt = 1,
+                                        SizeInKB = (double)fileInfo.Length / 1024,
+                                        OTCS = new() { ParentID = createFileFolder.Id, Ancestors = ancestors },
+                                        BatchFolderPath = filesPath,
+                                        SubBatchFolderPath = subBatchFolder
+                                    };
+
+                                    Logger.Information($"Processing {file}");
+                                    var fileName = Path.GetFileName(file);
+
+                                    // Check file extensions
+                                    var ext = Path.GetExtension(file).ToLowerInvariant();
+                                    if (!ValidFileExtensions.Contains(ext))
+                                    {
+                                        var remarks = $"File {fileName} has no valid extension";
+                                        batchFile.Status = BatchFileStatus.Failed;
+                                        batchFile.Remarks = remarks;
+                                        batchFile.EndDate = DateTime.Now;
+                                        InvalidFiles.Add(batchFile);
+                                        Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                                        continue;
+                                    }
+
+                                    if (fileInfo.Length == 0)
+                                    {
+                                        var remarks = $"File {fileName} is empty";
+                                        batchFile.Status = BatchFileStatus.Failed;
+                                        batchFile.Remarks = remarks;
+                                        batchFile.EndDate = DateTime.Now;
+                                        InvalidFiles.Add(batchFile);
+                                        Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                                        continue;
+                                    }
+
+                                    var checksum = Checksum.GetFromFile(file);
+                                    var parts = file.Split(Path.DirectorySeparatorChar);
+                                    var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
+
+                                    var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
+
+                                    if (findChecksumByPath == null)
+                                    {
+                                        var remarks = $"File {fileName} checksum's not found in manifest file";
+                                        batchFile.Status = BatchFileStatus.Failed;
+                                        batchFile.Remarks = remarks;
+                                        batchFile.EndDate = DateTime.Now;
+                                        InvalidFiles.Add(batchFile);
+                                        Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                                        continue;
+                                    }
+
+                                    if (findChecksumByPath.Checksum != checksum)
+                                    {
+                                        var remarks = $"File {fileName} checksum's is mismatch";
+                                        batchFile.Status = BatchFileStatus.Failed;
+                                        batchFile.Remarks = remarks;
+                                        batchFile.EndDate = DateTime.Now;
+                                        InvalidFiles.Add(batchFile);
+                                        Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                                        continue;
+                                    }
+
+                                    batchFile.Checksum = checksum;
+                                    ValidFiles.Add(batchFile);
+                                }
                             }
-
-                            if (fileInfo.Length == 0)
-                            {
-                                var remarks = $"File {fileName} is empty";
-                                batchFile.Status = BatchFileStatus.Failed;
-                                batchFile.Remarks = remarks;
-                                batchFile.EndDate = DateTime.Now;
-                                InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                continue;
-                            }
-
-                            var checksum = Checksum.GetFromFile(file);
-                            var parts = file.Split(Path.DirectorySeparatorChar);
-                            var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
-
-                            var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
-
-                            if (findChecksumByPath == null)
-                            {
-                                var remarks = $"File {fileName} checksum's not found in manifest file";
-                                batchFile.Status = BatchFileStatus.Failed;
-                                batchFile.Remarks = remarks;
-                                batchFile.EndDate = DateTime.Now;
-                                InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                continue;
-                            }
-
-                            if (findChecksumByPath.Checksum != checksum)
-                            {
-                                var remarks = $"File {fileName} checksum's is mismatch";
-                                batchFile.Status = BatchFileStatus.Failed;
-                                batchFile.Remarks = remarks;
-                                batchFile.EndDate = DateTime.Now;
-                                InvalidFiles.Add(batchFile);
-                                Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                continue;
-                            }
-
-                            batchFile.Checksum = checksum;
-                            ValidFiles.Add(batchFile);
                         }
                     }
 
