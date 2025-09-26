@@ -15,7 +15,7 @@ namespace UploadRecords.Utils
                 string subject = "Upload Records Notification";
                 string body = $"""
                     Dear MND POC and Digitization Vendor POC, <br><br>
-                    Please note that the upload of batch {summarizer.BatchNameAndNumber} has been completed. <br><br>
+                    Please note that the upload of batch {summarizer.BatchNumber} has been completed. <br><br>
                     Summary Report <br>
                     Total Files Ran: {summarizer.BatchFiles.Count} <br>
                     Total Success: {summarizer.BatchFiles.Count(x => x.Status == Enums.BatchFileStatus.Completed)} <br>   

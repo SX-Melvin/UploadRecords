@@ -12,15 +12,15 @@ namespace UploadRecords.Services
         public Scanner Scanner { get; set; }
         public string ReportPath { get; set; }
         public string ReportFileName { get; set; }
-        public string BatchNameAndNumber { get; set; }
+        public string BatchNumber { get; set; }
         public MailConfiguration MailConfiguration { get; set; }
         public Summarizer(Scanner scanner, List<BatchFile> files, MailConfiguration mailConfig, List<string> emailAddresses)
         {
             BatchFiles = files.OrderBy(x => x.StartDate).ToList(); // Sort Start Time ASC
             Scanner = scanner;
             EmailAddresses = emailAddresses;
-            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyy")}_{Path.GetFileName(Scanner.FolderPath)}_{Scanner.ControlFile.BatchNumber}.xlsx";
-            BatchNameAndNumber = $"{Path.GetFileName(Scanner.FolderPath)}_{Scanner.ControlFile.BatchNumber}";
+            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyy")}_Batch_{Scanner.ControlFile.BatchNumber}.xlsx";
+            BatchNumber = Scanner.ControlFile.BatchNumber;
             MailConfiguration = mailConfig;
         }
 
