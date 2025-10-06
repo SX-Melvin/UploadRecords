@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using UploadRecords.Configs;
 using UploadRecords.Enums;
 using UploadRecords.Models;
+using UploadRecords.Models.API;
 using UploadRecords.Utils;
 
 namespace UploadRecords.Services
@@ -40,53 +41,6 @@ namespace UploadRecords.Services
             {
                 Logger.Information($"Beginning Scanning");
 
-                string name = Path.GetFileName(FolderPath);
-                string controlFilePath = Path.Combine(FolderPath, ControlFileName);
-                var metadata = Excel.ReadControlFile(controlFilePath);
-
-                // Control file not found
-                if (metadata == null)
-                {
-                    Logger.Error("Control file not found, skipped...");
-                    return;
-                }
-
-                ControlFile = metadata;
-
-                var getTicket = await OTCS.GetTicket();
-                if (getTicket.Error != null)
-                {
-                    Logger.Error("Process aborted due to: " + getTicket.Error);
-                    return;
-                }
-
-                var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath);
-                var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
-                var ancestors = getAncestors.Ancestors;
-
-                if (getAncestors.Error != null)
-                {
-                    Logger.Error("Process aborted due to: " + getAncestors.Error);
-                    return;
-                }
-
-                var createFolder = await OTCS.CreateFolder(name, nodeId, getTicket.Ticket!);
-
-                // Failed to create batch folder
-                if (createFolder.Error != null)
-                {
-                    Logger.Error("Process aborted due to: " + createFolder.Error);
-                    return;
-                }
-
-                ancestors.Add(new()
-                {
-                    Id = createFolder.Id,
-                    Name = name,
-                    ParentID = nodeId,
-                    Type = 0
-                });
-
                 // Loop each batch folder directories
                 foreach (var subBatchFolder in Directory.GetDirectories(FolderPath)) // subBatchFolder = CF-0001
                 {
@@ -104,26 +58,51 @@ namespace UploadRecords.Services
                         continue;
                     }
 
-                    var createBatchFolder = await OTCS.CreateFolder(batchFolderName, createFolder.Id, getTicket.Ticket!);
-                    
-                    // Failed to create batch folder
-                    if (createBatchFolder.Error != null)
-                    {
-                        Logger.Error("Process aborted due to: " + createBatchFolder.Error);
-                        continue;
-                    }
-
-                    ancestors.Add(new()
-                    {
-                        Id = createBatchFolder.Id,
-                        Name = batchFolderName,
-                        ParentID = createFolder.Id,
-                        Type = 0
-                    });
-
                     foreach (var fileRefFolder in Directory.GetDirectories(subBatchFolder))
                     {
                         var fileRefFolderName = Path.GetFileName(fileRefFolder);
+                        string controlFilePath = Path.Combine(fileRefFolder, "master", ControlFileName);
+                        var metadata = Excel.ReadControlFile(controlFilePath);
+
+                        // Control file not found
+                        if (metadata == null)
+                        {
+                            Logger.Error("Control file not found, skipped...");
+                            return;
+                        }
+
+                        ControlFile = metadata;
+
+                        // Create all the necesarry folders
+                        var getTicket = await OTCS.GetTicket();
+                        if (getTicket.Error != null)
+                        {
+                            Logger.Error("Process aborted due to: " + getTicket.Error);
+                            return;
+                        }
+
+                        var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath);
+                        var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
+                        var ancestors = getAncestors.Ancestors;
+
+                        var createFolder = await OTCS.CreateFolder(Path.GetFileName(FolderPath), nodeId, getTicket.Ticket!);
+
+                        // Failed to create batch folder
+                        if (createFolder.Error != null)
+                        {
+                            Logger.Error("Process aborted due to: " + createFolder.Error);
+                            return;
+                        }
+
+                        var createBatchFolder = await OTCS.CreateFolder(batchFolderName, createFolder.Id, getTicket.Ticket!);
+
+                        // Failed to create batch folder
+                        if (createBatchFolder.Error != null)
+                        {
+                            Logger.Error("Process aborted due to: " + createBatchFolder.Error);
+                            continue;
+                        }
+
                         var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, createBatchFolder.Id, getTicket.Ticket!);
 
                         // Failed to create batch folder
@@ -133,13 +112,22 @@ namespace UploadRecords.Services
                             continue;
                         }
 
-                        ancestors.Add(new()
-                        {
-                            Id = createFileRefFolder.Id,
-                            Name = fileRefFolderName,
-                            ParentID = createBatchFolder.Id,
-                            Type = 0
-                        });
+                        ancestors.AddRange([
+                            new()
+                            {
+                                Id = createFileRefFolder.Id,
+                                Name = fileRefFolderName,
+                                ParentID = createBatchFolder.Id,
+                                Type = 0
+                            },
+                            new()
+                            {
+                                Id = createBatchFolder.Id,
+                                Name = batchFolderName,
+                                ParentID = createFolder.Id,
+                                Type = 0
+                            }
+                        ]);
 
                         foreach (var folderFile in FoldersContainsFile)
                         {

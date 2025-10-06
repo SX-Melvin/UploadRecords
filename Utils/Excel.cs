@@ -63,6 +63,8 @@ namespace UploadRecords.Utils
 
         public static ControlFile? ReadControlFile(string filePath)
         {
+            Logger.Information($"Reading control file on {filePath}");
+
             ControlFile? result = null;
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
