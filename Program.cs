@@ -22,6 +22,7 @@ var otcsUsername = Registry.GetRegistryValue("otuser"); // OTCS account user
 var otcsSecret = Registry.GetRegistryValue("otkey"); // OTCS account pwd
 var otcsApiUrl = Registry.GetRegistryValue("otcsapiurl"); // OTCS API url
 List<string> recipients = config.GetSection("Batch:Recipients").Get<List<string>>(); // To who are we sending the email report
+string controlFileName = "metadata.xlsx"; // Control file name
 
 Logger.Information("DB Connection String " + dbConnectionStr);
 
@@ -52,16 +53,41 @@ var mailConfig = new MailConfiguration()
     Port = emailPort
 };
 
-var scanner = new Scanner(batchFolder, logPath, csdb, otcs);
-await scanner.ScanValidFiles();
+try
+{
+    string controlFilePath = Path.Combine(batchFolder, controlFileName);
+    var metadatas = Excel.ReadControlFile(controlFilePath);
 
-var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
+    // Control file not found
+    if (metadatas == null)
+    {
+        Logger.Error($"Control file not found on {controlFilePath}, skipped...");
+        return;
+    }
 
-var uploader = new Uploader(intervalEachRun, archiveCat, recordCat);
-await uploader.UploadFiles(otcs, queue);
+    foreach (var metadata in metadatas)
+    {
+        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata);
+        await scanner.ScanValidFiles();
 
-var summarizer = new Summarizer(scanner, [.. scanner.InvalidFiles, .. uploader.ProcessedFiles], mailConfig, recipients);
-summarizer.GenerateReport();
-summarizer.SendMail();
+        var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
+        var uploader = new Uploader(intervalEachRun, archiveCat, recordCat);
+        await uploader.UploadFiles(otcs, queue);
+
+        //var summarizer = new Summarizer(new()
+        //{
+        //    OTCS = otcs,
+        //    ReportNodeLocationID = long.Parse(config["OTCS:ReportNodeLocationID"]),
+        //    Scanner = scanner,
+        //    Uploader = uploader
+        //}, mailConfig, recipients);
+        //summarizer.GenerateReport();
+        //await summarizer.SendMail();
+    }
+}
+catch (Exception ex)
+{
+    Logger.Error($"An erro occured {ex.Message}");
+}
 // End Logic

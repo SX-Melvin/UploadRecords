@@ -29,7 +29,7 @@ namespace UploadRecords.Utils
             var body = new Dictionary<string, object>
             {
                 ["category_id"] = cat.ID,
-                [cat.Rows.SecurityClassification] = controlFile.FolderSecurityGrading,
+                [cat.Rows.SecurityClassification] = string.IsNullOrEmpty(controlFile.FolderSecurityGrading) ? "Confidential" : controlFile.FolderSecurityGrading,
             };
 
             return JsonConvert.SerializeObject(body);

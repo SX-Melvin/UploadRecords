@@ -11,13 +11,16 @@ namespace UploadRecords.Services
     {
         readonly string Username;
         readonly string Secret;
+        public string HostUrl;
         RestClientOptions RestOptions;
         RestClient Client;
 
         public OTCS(string username, string secret, string url) 
         {
+            var uri = new Uri(url);
             this.Username = username;
             this.Secret = secret;
+            HostUrl = $"{uri.Scheme}://{uri.Host}";
             this.RestOptions = new RestClientOptions(url);
             this.Client = new RestClient(this.RestOptions);
         }

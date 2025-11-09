@@ -61,11 +61,11 @@ namespace UploadRecords.Utils
             return savePath;
         }
 
-        public static ControlFile? ReadControlFile(string filePath)
+        public static List<ControlFile>? ReadControlFile(string filePath)
         {
             Logger.Information($"Reading control file on {filePath}");
 
-            ControlFile? result = null;
+            List<ControlFile>? result = null;
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
@@ -83,23 +83,26 @@ namespace UploadRecords.Utils
 
             foreach (DataRow row in table.Rows)
             {
-                result = new();
+                result ??= [];
+
+                ControlFile data = new();
 
                 if (DateTime.TryParse(row["TransferDate"]?.ToString(), out DateTime parsedDate))
                 {
-                    result.TransferDate = parsedDate;
+                    data.TransferDate = parsedDate;
                 }
 
-                result.BatchNumber = row["BatchNumber"].ToString();
-                result.MicrofilmNumber = row["MicrofilmNumber"].ToString();
-                result.RecordSeriesTitle = row["RecordSeriesTitle"].ToString();
-                result.AuthorityNumber = row["AuthorityNumber"].ToString();
-                result.RecordType = row["RecordType"].ToString();
-                result.FolderRef = row["FolderRef"].ToString();
-                result.FolderTitle = row["FolderTitle"].ToString();
-                result.FolderSecurityGrading = row["FolderSecurityGrading"].ToString();
-                result.FolderPath = (row["FolderPath"].ToString() ?? "").Split(":").ToList();
-                result.FolderSensitivityClassification = row["FolderSensitivityClassification"].ToString();
+                data.BatchNumber = row["BatchNumber"].ToString();
+                data.MicrofilmNumber = row["MicrofilmNumber"].ToString();
+                data.RecordSeriesTitle = row["RecordSeriesTitle"].ToString();
+                data.AuthorityNumber = row["AuthorityNumber"].ToString();
+                data.RecordType = row["RecordType"].ToString();
+                data.FolderRef = row["FolderRef"].ToString();
+                data.FolderTitle = row["FolderTitle"].ToString();
+                data.FolderSecurityGrading = row["FolderSecurityGrading"].ToString();
+                data.FolderSensitivityClassification = row["FolderSensitivityClassification"].ToString();
+
+                result.Add(data);
             }
 
             return result;

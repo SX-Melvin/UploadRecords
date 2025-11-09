@@ -10,6 +10,8 @@ namespace UploadRecords.Utils
         {
             try
             {
+                var link = $"{summarizer.Config.OTCS.HostUrl}/otcs/cs.exe/app/nodes/{summarizer.ReportNodeID}";
+
                 Logger.Information("Sending email");
 
                 string subject = "Upload Records Notification";
@@ -21,11 +23,11 @@ namespace UploadRecords.Utils
                     Total Success: {summarizer.BatchFiles.Count(x => x.Status == Enums.BatchFileStatus.Completed)} <br>   
                     Total Failed: {summarizer.BatchFiles.Count(x => x.Status == Enums.BatchFileStatus.Failed)} <br>
                     Total Skipped: {summarizer.BatchFiles.Count(x => x.Status == Enums.BatchFileStatus.Skipped)} <br><br>
-                    Please refer to attached file for detailed report. <br><br>
+                    Please refer to the file for detailed report. <a href="{link}">{summarizer.ReportFileName}</a> <br><br>
                     This is a system generated email for your information. Please do not reply to this email. <br><br>
                     Thank you.
                 """;
-
+                Console.WriteLine(body);
                 var smtp = new SmtpClient
                 {
                     Host = config.Host,
@@ -46,11 +48,6 @@ namespace UploadRecords.Utils
                     message.Subject = subject;
                     message.Body = body;
                     message.IsBodyHtml = true;
-
-                    if (!string.IsNullOrEmpty(summarizer.ReportPath))
-                    {
-                        message.Attachments.Add(new Attachment(summarizer.ReportPath));
-                    }
 
                     smtp.Send(message);
                 }
