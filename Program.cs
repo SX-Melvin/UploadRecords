@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using UploadRecords.Models;
 using UploadRecords.Services;
 using UploadRecords.Utils;
@@ -43,6 +44,7 @@ Logger.Information("Recipients: " + string.Join(", ", recipients));
 
 var archiveCat = Configuration.GetArchiveCategories(config);
 var recordCat = Configuration.GetRecordCategories(config);
+var divisions = Configuration.GetDivisionPrep(config);
 
 var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
 var csdb = new CSDB(dbConnectionStr);
@@ -52,6 +54,7 @@ var mailConfig = new MailConfiguration()
     From = emailFrom,
     Port = emailPort
 };
+var division = Division.GetDivisionDatas(divisions, csdb);
 
 try
 {
@@ -64,26 +67,33 @@ try
         Logger.Error($"Control file not found on {controlFilePath}, skipped...");
         return;
     }
-
-    foreach (var metadata in metadatas)
+    for (global::System.Int32 i = 0; i < metadatas.Count; i++)
     {
+        var metadata = metadatas[i];
+
         var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata);
         await scanner.ScanValidFiles();
+        
+        // Add metadata.xlsx on first loop
+        if (i == 0)
+        {
+            scanner.AddMetadataFileToValidFiles(controlFilePath);
+        }
 
         var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
 
-        var uploader = new Uploader(intervalEachRun, archiveCat, recordCat);
+        var uploader = new Uploader(intervalEachRun, division, archiveCat, recordCat);
         await uploader.UploadFiles(otcs, queue);
 
-        //var summarizer = new Summarizer(new()
-        //{
-        //    OTCS = otcs,
-        //    ReportNodeLocationID = long.Parse(config["OTCS:ReportNodeLocationID"]),
-        //    Scanner = scanner,
-        //    Uploader = uploader
-        //}, mailConfig, recipients);
-        //summarizer.GenerateReport();
-        //await summarizer.SendMail();
+        var summarizer = new Summarizer(new()
+        {
+            OTCS = otcs,
+            ReportNodeLocationID = long.Parse(config["OTCS:ReportNodeLocationID"]),
+            Scanner = scanner,
+            Uploader = uploader
+        }, mailConfig, recipients);
+        summarizer.GenerateReport();
+        await summarizer.SendMail();
     }
 }
 catch (Exception ex)

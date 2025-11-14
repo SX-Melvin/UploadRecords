@@ -27,7 +27,7 @@ namespace UploadRecords.Utils
                     This is a system generated email for your information. Please do not reply to this email. <br><br>
                     Thank you.
                 """;
-                Console.WriteLine(body);
+
                 var smtp = new SmtpClient
                 {
                     Host = config.Host,

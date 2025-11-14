@@ -19,5 +19,7 @@ namespace UploadRecords.Models
         public string? FolderSecurityGrading { get; set; }
         public List<string> FolderPath { get; set; } = [];
         public string? FolderSensitivityClassification { get; set; }
+        public string? Note1 { get; set; }
+        public string? Note2 { get; set; }
     }
 }

@@ -23,7 +23,7 @@ namespace UploadRecords.Services
 
             BatchFiles = files.OrderBy(x => x.StartDate).ToList(); // Sort Start Time ASC
             EmailAddresses = emailAddresses;
-            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyyHHmmss")}_Batch_{Config.Scanner.ControlFile.BatchNumber}.xlsx";
+            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyyHHmm")}_Batch_{Config.Scanner.ControlFile.BatchNumber}.xlsx";
             BatchNumber = Config.Scanner.ControlFile.BatchNumber;
             MailConfiguration = mailConfig;
         }

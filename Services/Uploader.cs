@@ -11,12 +11,14 @@ namespace UploadRecords.Services
         public List<BatchFile> ProcessedFiles = [];
         public CategoryConfiguration<ArchiveCategory> ArchiveCategory;
         public CategoryConfiguration<_RecordCategory> RecordCategory;
+        public List<DivisionData> Division;
         
-        public Uploader(int intervalBetweenFiles, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory)
+        public Uploader(int intervalBetweenFiles, List<DivisionData> division, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory)
         {
             IntervalBetweenFiles = intervalBetweenFiles;
             ArchiveCategory = archiveCategory;
             RecordCategory = recordCategory;
+            Division = division;
         }
 
         public async Task UploadFiles(OTCS otcs, Queue queue) 
@@ -148,6 +150,45 @@ namespace UploadRecords.Services
                 // Update File Categories
                 await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertRecordCategoryToJSON(RecordCategory, item.File.ControlFile), RecordCategory.ID, ticket);
                 await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertArchiveCategoryToJSON(ArchiveCategory, item.File.ControlFile), ArchiveCategory.ID, ticket);
+
+                // Adjust divisions access
+                if(item.File.PermissionInfo.Division.All)
+                {
+                    // Update for all divisions
+                    Logger.Information($"Updating Permissions For All Divisions");
+                    foreach (var division in Division)
+                    {
+                        foreach (var prep in division.PrepDatas ?? [])
+                        {
+                            await otcs.UpdateNodeGroupPermission(upload.Id, prep.ID, ["see", "see_contents"], ticket);
+                        }
+                    }
+                } 
+                else if(item.File.PermissionInfo.Division.UpdateBasedOnMetadata)
+                {
+                    // Update divisions permission based on metadata
+                    Logger.Information($"Updating Division Permission Based On Metadata");
+                    foreach (var division in Division.FirstOrDefault(x => string.Equals(x.Name, item.File.ControlFile.Note2, StringComparison.OrdinalIgnoreCase))?.PrepDatas ?? [])
+                    {
+                        await otcs.UpdateNodeGroupPermission(upload.Id, division.ID, ["see", "see_contents"], ticket);
+                    }
+                }
+
+                // Remove public access
+                Logger.Information($"Updating Public Access Permission");
+                await otcs.UpdateNodePublicPermission(upload.Id, [], ticket);
+
+                // Adjust owner access
+                Logger.Information($"Updating Owner Permission");
+                await otcs.UpdateNodeOwnerPermission(upload.Id, ["see", "see_contents"], ticket);
+
+                // Remove business administrators permission
+                Logger.Information($"Updating Business Adminstrators Permission");
+                await otcs.UpdateNodeGroupPermission(upload.Id, 2001, [], ticket);
+
+                // Adjust admin access if needed
+                Logger.Information($"Updating Functional Admin Permission");
+                await otcs.UpdateNodeOwnerPermissionWithRight(upload.Id, ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"], 1000, ticket);
 
                 Audit.Success(item.File.LogDirectory, $"{item.File.Name} categories was updated - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
 

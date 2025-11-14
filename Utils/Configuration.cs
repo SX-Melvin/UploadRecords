@@ -20,6 +20,24 @@ namespace UploadRecords.Utils
                 }
             };
         }
+        public static List<DivisionConfiguration> GetDivisionPrep(IConfigurationRoot config)
+        { 
+            var divisions = new List<DivisionConfiguration>();
+
+            var divisionSection = config.GetSection("Divisions");
+            foreach (var division in divisionSection.GetChildren())
+            {
+                var divisionConfig = new DivisionConfiguration
+                {
+                    Name = division.Key,
+                    Preps = division.Get<List<string>>() ?? new List<string>()
+                };
+
+                divisions.Add(divisionConfig);
+            }
+
+            return divisions;
+        }
         public static CategoryConfiguration<_RecordCategory> GetRecordCategories(IConfigurationRoot config)
         {
             return new()

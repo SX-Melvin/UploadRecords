@@ -18,7 +18,8 @@ namespace UploadRecords.Models
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public required string BatchFolderPath { get; set; }
-        public required string SubBatchFolderPath { get; set; }
+        public required string? SubBatchFolderPath { get; set; } = null;
+        public required PermissionInfo PermissionInfo { get; set; }
         public required ValidFileOTCS OTCS { get; set; }
     }
 
@@ -26,5 +27,15 @@ namespace UploadRecords.Models
     {
         public required long ParentID { get; set; }
         public required List<GetNodeAcestorsAncestor> Ancestors { get; set; }
+    }
+
+    public class PermissionInfo
+    {
+        public required PermissionInfoDivision Division { get; set; }
+    }
+    public class PermissionInfoDivision
+    {
+        public bool All { get; set; } = false;
+        public bool UpdateBasedOnMetadata { get; set; } = false;
     }
 }

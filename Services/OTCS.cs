@@ -78,7 +78,153 @@ namespace UploadRecords.Services
 
             return result;
         }
+        public async Task<CreateFileResponse> UpdateNodePermission(long nodeId, long rightId, List<string> permissions, string ticket) 
+        {
+            CreateFileResponse result = new();
 
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom/{rightId}", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", JsonConvert.SerializeObject(new
+            {
+                permissions
+            }));
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/custom/{rightId}: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+        public async Task<CreateFileResponse> UpdateNodeGroupPermission(long nodeId, long groupId, List<string> permissions, string ticket) 
+        {
+            CreateFileResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/group", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", JsonConvert.SerializeObject(new
+            {
+                permissions,
+                right_id = groupId
+            }));
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/group: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+        public async Task<CreateFileResponse> UpdateNodeOwnerPermission(long nodeId, List<string> permissions, string ticket) 
+        {
+            CreateFileResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/owner", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", JsonConvert.SerializeObject(new
+            {
+                permissions
+            }));
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/owner: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+        public async Task<CreateFileResponse> UpdateNodeOwnerPermissionWithRight(long nodeId, List<string> permissions, long rightId, string ticket) 
+        {
+            CreateFileResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/owner", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", JsonConvert.SerializeObject(new
+            {
+                permissions,
+                right_id = rightId
+            }));
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/owner: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
+        public async Task<CreateFileResponse> UpdateNodePublicPermission(long nodeId, List<string> permissions, string ticket) 
+        {
+            CreateFileResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/public", Method.Put);
+
+            request.AddHeader("otcsticket", ticket);
+            request.AddParameter("body", JsonConvert.SerializeObject(new
+            {
+                permissions
+            }));
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/public: " + response.Content);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+            }
+
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
+            {
+                result = data;
+            }
+
+            return result;
+        }
         public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket)
         {
             CreateFolderResponse result = new();

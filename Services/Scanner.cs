@@ -1,7 +1,11 @@
-﻿using Newtonsoft.Json;
+﻿using DocumentFormat.OpenXml.EMMA;
+using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
 using UploadRecords.Enums;
 using UploadRecords.Models;
+using UploadRecords.Models.API;
 using UploadRecords.Utils;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace UploadRecords.Services
 {
@@ -13,11 +17,14 @@ namespace UploadRecords.Services
         public string ManifestFileName = "manifest-sha256.txt";
         public ControlFile ControlFile;
         public List<string> FoldersContainsFile = ["master", "access"];
-        public List<string> ValidFileExtensions = [".tiff", ".pdf"];
+        public List<string> ValidFileExtensions = [".tiff", ".pdf", ".tif"];
         public List<BatchFile> InvalidFiles = [];
         public List<BatchFile> ValidFiles = [];
         public OTCS OTCS;
         public CSDB CSDB;
+        public long RootNodeID;
+        public List<GetNodeAcestorsAncestor> RootAncestors = [];
+        public List<string> RootFiles = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
 
         public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile)
         {
@@ -39,9 +46,8 @@ namespace UploadRecords.Services
                 string root = Path.GetPathRoot(subBatchFolder);
                 ControlFile.FolderPath = subBatchFolder.Substring(root.Length).Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).ToList();
 
-                var batchFolderName = Path.GetFileName(subBatchFolder);
                 string manifestFilePath = Path.Combine(subBatchFolder, ManifestFileName);
-                var manifest = CSV.ReadManifest(manifestFilePath);
+                var manifest = Manifest.ReadManifest(manifestFilePath);
                 var logsPath = Path.Combine(LogPath, Path.GetFileName(subBatchFolder));
 
                 // Manifest not found
@@ -63,23 +69,33 @@ namespace UploadRecords.Services
                 var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
                 var ancestors = getAncestors.Ancestors;
 
+                RootAncestors = ancestors;
+                RootNodeID = nodeId;
+
                 foreach (var file in Directory.GetFiles(subBatchFolder))
                 {
                     var fileInfo = new FileInfo(file);
-
+                    var fileName = Path.GetFileName(file);
                     var batchFile = new BatchFile
                     {
                         ControlFile = ControlFile,
                         Path = file,
                         LogDirectory = logsPath,
-                        Name = Path.GetFileName(file),
+                        Name = fileName,
                         StartDate = DateTime.Now,
                         Attempt = 1,
                         SizeInKB = (double)fileInfo.Length / 1024,
                         OTCS = new() { ParentID = nodeId, Ancestors = ancestors },
                         BatchFolderPath = subBatchFolder,
                         SubBatchFolderPath = subBatchFolder,
-                        Checksum = null
+                        Checksum = null,
+                        PermissionInfo = new()
+                        {
+                            Division = new()
+                            {
+                                All = RootFiles.Contains(fileName) || Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif",
+                            }
+                        }
                     };
                     ValidFiles.Add(batchFile);
                 }
@@ -133,7 +149,7 @@ namespace UploadRecords.Services
                             foreach (var file in Directory.GetFiles(filesPath))
                             {
                                 var fileInfo = new FileInfo(file);
-
+                                var fileName = Path.GetFileName(file);
                                 var batchFile = new BatchFile()
                                 {
                                     ControlFile = ControlFile,
@@ -145,11 +161,18 @@ namespace UploadRecords.Services
                                     SizeInKB = (double)fileInfo.Length / 1024,
                                     OTCS = new() { ParentID = createFileFolder.Id, Ancestors = ancestors },
                                     BatchFolderPath = filesPath,
-                                    SubBatchFolderPath = subBatchFolder
+                                    SubBatchFolderPath = subBatchFolder,
+                                    PermissionInfo = new()
+                                    {
+                                        Division = new()
+                                        {
+                                            All = Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif",
+                                            UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf"
+                                        }
+                                    }
                                 };
 
                                 Logger.Information($"Processing {file}");
-                                var fileName = Path.GetFileName(file);
 
                                 // Check file extensions
                                 var ext = Path.GetExtension(file).ToLowerInvariant();
@@ -178,8 +201,7 @@ namespace UploadRecords.Services
                                 var checksum = Checksum.GetFromFile(file);
                                 var parts = file.Split(Path.DirectorySeparatorChar);
                                 var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
-
-                                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
+                                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path.Replace("/", "\\") == filePathChecksum);
 
                                 if (findChecksumByPath == null)
                                 {
@@ -216,6 +238,47 @@ namespace UploadRecords.Services
             {
                 Logger.Error(ex.Message);
             }
+        }
+
+        public async Task AddMetadataFileToValidFiles(string metadataFilePath)
+        {
+            var fileInfo = new FileInfo(metadataFilePath);
+            var nodeId = RootAncestors.First(x => x.Id == RootNodeID).ParentID;
+
+            // Create all the necesarry folders
+            var getTicket = await OTCS.GetTicket();
+            if (getTicket.Error != null)
+            {
+                Logger.Error("Control file failed to upload due to: " + getTicket.Error);
+                return;
+            }
+
+            var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
+            var ancestors = getAncestors.Ancestors;
+
+            var batchFile = new BatchFile
+            {
+                ControlFile = ControlFile,
+                Path = metadataFilePath,
+                LogDirectory = Path.Combine(LogPath, Path.GetFileName(FolderPath)),
+                Name = Path.GetFileName(metadataFilePath),
+                StartDate = DateTime.Now,
+                Attempt = 1,
+                SizeInKB = (double)fileInfo.Length / 1024,
+                OTCS = new() { ParentID = nodeId, Ancestors = ancestors },
+                BatchFolderPath = FolderPath,
+                SubBatchFolderPath = null,
+                Checksum = null,
+                PermissionInfo = new()
+                {
+                    Division = new()
+                    {
+                        All = true,
+                    }
+                }
+            };
+
+            ValidFiles.Add(batchFile);
         }
     }
 }

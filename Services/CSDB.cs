@@ -15,5 +15,12 @@ namespace UploadRecords.Services
         {
             return DatabaseContext.DTreeCores.Where(x => x.Name.ToLower() == nodeName.ToLower() && x.ParentID == parentID).FirstOrDefault();
         }
+        public List<KUAF> GetKuafsByNames(List<string> names)
+        {
+            var lowerNames = names.Select(n => n.ToLower()).ToList();
+            return DatabaseContext.KUAFs
+                .Where(x => lowerNames.Contains(x.Name.ToLower()))
+                .ToList();
+        }
     }
 }

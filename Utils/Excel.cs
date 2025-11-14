@@ -29,6 +29,7 @@ namespace UploadRecords.Utils
             worksheet.Cell(1, 7).Value = "Attempt";
             worksheet.Cell(1, 8).Value = "Status";
             worksheet.Cell(1, 9).Value = "Remarks";
+            worksheet.Cell(1, 10).Value = "Division";
 
             int row = 2;
             foreach (var batchFile in batchFiles)
@@ -44,11 +45,12 @@ namespace UploadRecords.Utils
                 worksheet.Cell(row, 7).Value = batchFile.Attempt;
                 worksheet.Cell(row, 8).Value = batchFile.Status.ToString();
                 worksheet.Cell(row, 9).Value = batchFile.Remarks;
+                worksheet.Cell(row, 10).Value = batchFile.ControlFile.Note2;
                 row++;
             }
 
             // Style header row
-            var header = worksheet.Range("A1:I1");
+            var header = worksheet.Range("A1:J1");
             header.Style.Font.Bold = true;
             header.Style.Fill.BackgroundColor = XLColor.Black;
             header.Style.Font.FontColor = XLColor.White;
@@ -84,6 +86,12 @@ namespace UploadRecords.Utils
             foreach (DataRow row in table.Rows)
             {
                 result ??= [];
+                var batchNumber = row["BatchNumber"].ToString();
+
+                if (string.IsNullOrEmpty(batchNumber))
+                {
+                    continue;
+                }
 
                 ControlFile data = new();
 
@@ -92,7 +100,7 @@ namespace UploadRecords.Utils
                     data.TransferDate = parsedDate;
                 }
 
-                data.BatchNumber = row["BatchNumber"].ToString();
+                data.BatchNumber = batchNumber;
                 data.MicrofilmNumber = row["MicrofilmNumber"].ToString();
                 data.RecordSeriesTitle = row["RecordSeriesTitle"].ToString();
                 data.AuthorityNumber = row["AuthorityNumber"].ToString();
@@ -100,6 +108,8 @@ namespace UploadRecords.Utils
                 data.FolderRef = row["FolderRef"].ToString();
                 data.FolderTitle = row["FolderTitle"].ToString();
                 data.FolderSecurityGrading = row["FolderSecurityGrading"].ToString();
+                data.Note1 = row["Note1"].ToString();
+                data.Note2 = row["Note2"].ToString();
                 data.FolderSensitivityClassification = row["FolderSensitivityClassification"].ToString();
 
                 result.Add(data);
