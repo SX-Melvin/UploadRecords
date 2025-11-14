@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.ExtendedProperties;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,16 +28,17 @@ namespace UploadRecords.Utils
                         continue;
 
                     // Split into 2 columns: hash + path
-                    var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    string hash = parts[0];
-                    string path = parts[1];
-
-                    manifest.Add(new ManifestFile
+                    var parts = line.Split("  ", 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length == 2)
                     {
-                        Checksum = hash,
-                        Path = path
-                    });
+                        string hash = parts[0];
+                        string path = parts[1];
+                        manifest.Add(new ManifestFile
+                        {
+                            Checksum = hash,
+                            Path = path.Replace("/", "\\") // Normalize to backward slash
+                        });
+                    }
                 }
             }
 

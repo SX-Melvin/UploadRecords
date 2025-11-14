@@ -152,43 +152,36 @@ namespace UploadRecords.Services
                 await otcs.ApplyCategoryOnNode(upload.Id, Category.ConvertArchiveCategoryToJSON(ArchiveCategory, item.File.ControlFile), ArchiveCategory.ID, ticket);
 
                 // Adjust divisions access
-                if(item.File.PermissionInfo.Division.All)
+                if(item.File.PermissionInfo.Division.UpdateBasedOnMetadata)
                 {
-                    // Update for all divisions
-                    Logger.Information($"Updating Permissions For All Divisions");
-                    foreach (var division in Division)
+                    Logger.Information($"Updating Permissions Based On Divisions");
+                    var divisions = Division.Where(x => !string.Equals(x.Name, item.File.ControlFile.Note2, StringComparison.OrdinalIgnoreCase));
+                    foreach (var prep in divisions)
                     {
-                        foreach (var prep in division.PrepDatas ?? [])
+                        foreach (var data in prep.PrepDatas)
                         {
-                            await otcs.UpdateNodeGroupPermission(upload.Id, prep.ID, ["see", "see_contents"], ticket);
+                            await otcs.DeleteNodePermission(upload.Id, data.ID, ticket);
                         }
-                    }
-                } 
-                else if(item.File.PermissionInfo.Division.UpdateBasedOnMetadata)
-                {
-                    // Update divisions permission based on metadata
-                    Logger.Information($"Updating Division Permission Based On Metadata");
-                    foreach (var division in Division.FirstOrDefault(x => string.Equals(x.Name, item.File.ControlFile.Note2, StringComparison.OrdinalIgnoreCase))?.PrepDatas ?? [])
-                    {
-                        await otcs.UpdateNodeGroupPermission(upload.Id, division.ID, ["see", "see_contents"], ticket);
                     }
                 }
 
-                // Remove public access
-                Logger.Information($"Updating Public Access Permission");
-                await otcs.UpdateNodePublicPermission(upload.Id, [], ticket);
+                Logger.Information($"Updating Admin Permission To Full Control");
+                await otcs.UpdateNodePermissionBulk(upload.Id, [new() {
+                    Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
+                    RightID = 1000 // Functional Admin
+                }], ticket);
 
-                // Adjust owner access
+                Logger.Information($"Updating Public Access Permission");
+                await otcs.DeleteNodePublicPermission(upload.Id, ticket);
+
                 Logger.Information($"Updating Owner Permission");
                 await otcs.UpdateNodeOwnerPermission(upload.Id, ["see", "see_contents"], ticket);
 
-                // Remove business administrators permission
-                Logger.Information($"Updating Business Adminstrators Permission");
-                await otcs.UpdateNodeGroupPermission(upload.Id, 2001, [], ticket);
-
-                // Adjust admin access if needed
-                Logger.Information($"Updating Functional Admin Permission");
-                await otcs.UpdateNodeOwnerPermissionWithRight(upload.Id, ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"], 1000, ticket);
+                Logger.Information($"Removing Business Adminstrators Permission");
+                await otcs.DeleteNodePermission(upload.Id, 2001, ticket);
+                
+                Logger.Information($"Removing Owner Group Permission");
+                await otcs.DeleteNodeOwnerGroupPermission(upload.Id, ticket);
 
                 Audit.Success(item.File.LogDirectory, $"{item.File.Name} categories was updated - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
 

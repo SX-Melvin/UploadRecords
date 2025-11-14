@@ -71,13 +71,13 @@ try
     {
         var metadata = metadatas[i];
 
-        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata);
+        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata, division);
         await scanner.ScanValidFiles();
         
         // Add metadata.xlsx on first loop
         if (i == 0)
         {
-            scanner.AddMetadataFileToValidFiles(controlFilePath);
+            await scanner.AddMetadataFileToValidFiles(controlFilePath);
         }
 
         var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);

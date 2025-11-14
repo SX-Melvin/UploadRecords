@@ -64,11 +64,6 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information("v1/nodes: " + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
             var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
 
             if(data != null)
@@ -78,27 +73,36 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFileResponse> UpdateNodePermission(long nodeId, long rightId, List<string> permissions, string ticket) 
+        public async Task UpdateNodePermissionBulk(long nodeId, List<UpdateNodePermissionData> permissions, string ticket) 
         {
-            CreateFileResponse result = new();
+            foreach(var perm in permissions)
+            {
+                var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom", Method.Post);
+                request.AddHeader("otcsticket", ticket);
+                request.AddParameter("body", JsonConvert.SerializeObject(new
+                {
+                    right_id = perm.RightID,
+                    permissions = perm.Permissions,
+                    apply_to = 0,
+                    include_sub_types = new List<long>()
+                }));
+                var response = await Client.ExecuteAsync(request);
+                Logger.Information($"Permissions: {JsonConvert.SerializeObject(permissions)}");
+                Logger.Information($"v2/nodes/{nodeId}/permissions/custom: " + response.Content);
+            }
+        }
+        public async Task<CommonResponse> DeleteNodePermission(long nodeId, long rightId, string ticket) 
+        {
+            CommonResponse result = new();
 
-            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom/{rightId}", Method.Put);
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom/{rightId}", Method.Delete);
 
             request.AddHeader("otcsticket", ticket);
-            request.AddParameter("body", JsonConvert.SerializeObject(new
-            {
-                permissions
-            }));
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/custom/{rightId}: " + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+            var data = JsonConvert.DeserializeObject<CommonResponse>(response.Content);
 
             if(data != null)
             {
@@ -107,39 +111,9 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFileResponse> UpdateNodeGroupPermission(long nodeId, long groupId, List<string> permissions, string ticket) 
+        public async Task<CommonResponse> UpdateNodeOwnerPermission(long nodeId, List<string> permissions, string ticket) 
         {
-            CreateFileResponse result = new();
-
-            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/group", Method.Put);
-
-            request.AddHeader("otcsticket", ticket);
-            request.AddParameter("body", JsonConvert.SerializeObject(new
-            {
-                permissions,
-                right_id = groupId
-            }));
-
-            var response = await Client.ExecuteAsync(request);
-            Logger.Information($"v2/nodes/{nodeId}/permissions/group: " + response.Content);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
-
-            if(data != null)
-            {
-                result = data;
-            }
-
-            return result;
-        }
-        public async Task<CreateFileResponse> UpdateNodeOwnerPermission(long nodeId, List<string> permissions, string ticket) 
-        {
-            CreateFileResponse result = new();
+            CommonResponse result = new();
 
             var request = new RestRequest($"v2/nodes/{nodeId}/permissions/owner", Method.Put);
 
@@ -152,12 +126,7 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/owner: " + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+            var data = JsonConvert.DeserializeObject<CommonResponse>(response.Content);
 
             if(data != null)
             {
@@ -166,55 +135,36 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFileResponse> UpdateNodeOwnerPermissionWithRight(long nodeId, List<string> permissions, long rightId, string ticket) 
+        public async Task<CreateFileResponse> DeleteNodePublicPermission(long nodeId, string ticket) 
         {
             CreateFileResponse result = new();
 
-            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/owner", Method.Put);
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/public", Method.Delete);
 
             request.AddHeader("otcsticket", ticket);
-            request.AddParameter("body", JsonConvert.SerializeObject(new
-            {
-                permissions,
-                right_id = rightId
-            }));
-
-            var response = await Client.ExecuteAsync(request);
-            Logger.Information($"v2/nodes/{nodeId}/permissions/owner: " + response.Content);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
-
-            if(data != null)
-            {
-                result = data;
-            }
-
-            return result;
-        }
-        public async Task<CreateFileResponse> UpdateNodePublicPermission(long nodeId, List<string> permissions, string ticket) 
-        {
-            CreateFileResponse result = new();
-
-            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/public", Method.Put);
-
-            request.AddHeader("otcsticket", ticket);
-            request.AddParameter("body", JsonConvert.SerializeObject(new
-            {
-                permissions
-            }));
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/public: " + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+
+            if(data != null)
             {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
+                result = data;
             }
+
+            return result;
+        }
+        public async Task<CreateFileResponse> DeleteNodeOwnerGroupPermission(long nodeId, string ticket) 
+        {
+            CreateFileResponse result = new();
+
+            var request = new RestRequest($"v2/nodes/{nodeId}/permissions/group", Method.Delete);
+
+            request.AddHeader("otcsticket", ticket);
+
+            var response = await Client.ExecuteAsync(request);
+            Logger.Information($"v2/nodes/{nodeId}/permissions/group: " + response.Content);
 
             var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
 
@@ -238,11 +188,6 @@ namespace UploadRecords.Services
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information("v1/nodes: " + response.Content);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
 
             var data = JsonConvert.DeserializeObject<CreateFolderResponse>(response.Content);
 
@@ -280,11 +225,6 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{parentID}/nodes: " + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
             var data = JsonConvert.DeserializeObject<GetNodeSubnodesResponse>(response.Content);
 
             if (data != null)
@@ -309,11 +249,6 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/ancestors" + response.Content);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
-
             var data = JsonConvert.DeserializeObject<GetNodeAncestorsResponse>(response.Content);
 
             if(data != null)
@@ -335,11 +270,6 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/categories body: " + body);
             Logger.Information($"v1/nodes/{nodeID}/categories: " + response.Content);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
 
             var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
 
@@ -372,11 +302,6 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/categories/{catID} body: " + body);
             Logger.Information($"v1/nodes/{nodeID}/categories/{catID}: " + response.Content);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                throw new HttpRequestException($"Unauthorized: {response.Content}", null, HttpStatusCode.Unauthorized);
-            }
 
             var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
 

@@ -35,7 +35,6 @@ namespace UploadRecords.Models
     }
     public class PermissionInfoDivision
     {
-        public bool All { get; set; } = false;
         public bool UpdateBasedOnMetadata { get; set; } = false;
     }
 }

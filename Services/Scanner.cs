@@ -25,14 +25,16 @@ namespace UploadRecords.Services
         public long RootNodeID;
         public List<GetNodeAcestorsAncestor> RootAncestors = [];
         public List<string> RootFiles = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
+        public List<DivisionData> Divisions;
 
-        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile)
+        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions)
         {
             FolderPath = batchPath;
             LogPath = logPath;
             OTCS = otcs;
             CSDB = csdb;
             ControlFile = controlFile;
+            Divisions = divisions;
         }
 
         public async Task ScanValidFiles()
@@ -65,7 +67,7 @@ namespace UploadRecords.Services
                     return;
                 }
 
-                var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath);
+                var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath, Divisions);
                 var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
                 var ancestors = getAncestors.Ancestors;
 
@@ -86,15 +88,12 @@ namespace UploadRecords.Services
                         Attempt = 1,
                         SizeInKB = (double)fileInfo.Length / 1024,
                         OTCS = new() { ParentID = nodeId, Ancestors = ancestors },
-                        BatchFolderPath = subBatchFolder,
+                        BatchFolderPath = FolderPath,
                         SubBatchFolderPath = subBatchFolder,
                         Checksum = null,
                         PermissionInfo = new()
                         {
                             Division = new()
-                            {
-                                All = RootFiles.Contains(fileName) || Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif",
-                            }
                         }
                     };
                     ValidFiles.Add(batchFile);
@@ -125,6 +124,7 @@ namespace UploadRecords.Services
 
                     foreach (var folderFile in FoldersContainsFile)
                     {
+                        var fileAncestors = ancestors;
                         var filesPath = Path.Combine(fileRefFolder, folderFile);
 
                         if (Path.Exists(filesPath))
@@ -138,7 +138,7 @@ namespace UploadRecords.Services
                                 continue;
                             }
 
-                            ancestors.Add(new()
+                            fileAncestors.Add(new()
                             {
                                 Id = createFileFolder.Id,
                                 Name = folderFile,
@@ -159,14 +159,13 @@ namespace UploadRecords.Services
                                     StartDate = DateTime.Now,
                                     Attempt = 1,
                                     SizeInKB = (double)fileInfo.Length / 1024,
-                                    OTCS = new() { ParentID = createFileFolder.Id, Ancestors = ancestors },
-                                    BatchFolderPath = filesPath,
+                                    OTCS = new() { ParentID = createFileFolder.Id, Ancestors = fileAncestors },
+                                    BatchFolderPath = FolderPath,
                                     SubBatchFolderPath = subBatchFolder,
                                     PermissionInfo = new()
                                     {
                                         Division = new()
                                         {
-                                            All = Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif",
                                             UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf"
                                         }
                                     }
@@ -201,7 +200,7 @@ namespace UploadRecords.Services
                                 var checksum = Checksum.GetFromFile(file);
                                 var parts = file.Split(Path.DirectorySeparatorChar);
                                 var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
-                                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path.Replace("/", "\\") == filePathChecksum);
+                                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
 
                                 if (findChecksumByPath == null)
                                 {
@@ -272,9 +271,6 @@ namespace UploadRecords.Services
                 PermissionInfo = new()
                 {
                     Division = new()
-                    {
-                        All = true,
-                    }
                 }
             };
 
