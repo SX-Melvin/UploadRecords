@@ -24,6 +24,7 @@ var otcsSecret = Registry.GetRegistryValue("otkey"); // OTCS account pwd
 var otcsApiUrl = Registry.GetRegistryValue("otcsapiurl"); // OTCS API url
 List<string> recipients = config.GetSection("Batch:Recipients").Get<List<string>>(); // To who are we sending the email report
 string controlFileName = "metadata.xlsx"; // Control file name
+long batchUploadNodeID = long.Parse(config["Batch:UploadFolderNodeID"]); // Where to upload the files / folder
 
 Logger.Information("DB Connection String " + dbConnectionStr);
 
@@ -55,7 +56,6 @@ var mailConfig = new MailConfiguration()
     Port = emailPort
 };
 var division = Division.GetDivisionDatas(divisions, csdb);
-
 try
 {
     string controlFilePath = Path.Combine(batchFolder, controlFileName);
@@ -71,7 +71,7 @@ try
     {
         var metadata = metadatas[i];
 
-        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata, division);
+        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata, division, batchUploadNodeID);
         await scanner.ScanValidFiles();
         
         // Add metadata.xlsx on first loop

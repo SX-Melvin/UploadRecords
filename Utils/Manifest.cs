@@ -14,7 +14,6 @@ namespace UploadRecords.Utils
         public static List<ManifestFile>? ReadManifest(string filePath)
         {
             List<ManifestFile>? manifest = null;
-
             if (File.Exists(filePath))
             {
                 manifest = [];

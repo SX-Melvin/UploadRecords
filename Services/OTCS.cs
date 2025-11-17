@@ -175,7 +175,7 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket)
+        public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket, List<DivisionData> divisions)
         {
             CreateFolderResponse result = new();
 
@@ -196,21 +196,62 @@ namespace UploadRecords.Services
                 result = data;
 
                 // Folder with that name already exists, lets get the folder directly
-                if(result.Error != null && result.Error.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                if(result.Error != null)
                 {
-                    var getFolder = await GetNodeFromParentByName(folderName, parentID, 0, ticket);
-
-                    if (getFolder != null && getFolder.Results.Count > 0) 
+                    if(result.Error.Contains("already exists", StringComparison.OrdinalIgnoreCase))
                     {
-                        result.Id = getFolder.Results[0].Data.Properties.Id;
-                        result.Error = null;
+                        var getFolder = await GetNodeFromParentByName(folderName, parentID, 0, ticket);
+
+                        if (getFolder != null && getFolder.Results.Count > 0) 
+                        {
+                            result.Id = getFolder.Results[0].Data.Properties.Id;
+                            result.Error = null;
+                        }
                     }
+                    return result;
                 }
+
+                await UpdateFolderPermission(result.Id, folderName, ticket, divisions);
             }
 
             return result;
         }
-        
+        public async Task UpdateFolderPermission(long nodeId, string folderName, string ticket, List<DivisionData> divisions)
+        {
+            List<UpdateNodePermissionData> permissionDatas = [
+                    new() {
+                        Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
+                        RightID = 1000 // Functional Admin
+                    }
+                ];
+
+            foreach (var division in divisions)
+            {
+                foreach (var prep in division.PrepDatas ?? [])
+                {
+                    permissionDatas.Add(new()
+                    {
+                        Permissions = ["see", "see_contents"],
+                        RightID = prep.ID,
+                    });
+                }
+            }
+
+            Logger.Information($"Updating Division Access Permission And Admin To Folder {folderName}");
+            await UpdateNodePermissionBulk(nodeId, permissionDatas, ticket);
+
+            Logger.Information($"Removing Public Access Permission To Folder {folderName}");
+            await DeleteNodePublicPermission(nodeId, ticket);
+
+            Logger.Information($"Updating Owner Permission To Folder {folderName}");
+            await UpdateNodeOwnerPermission(nodeId, ["see", "see_contents"], ticket);
+
+            Logger.Information($"Delete Owner Group Permission To Folder {folderName}");
+            await DeleteNodePermission(nodeId, 2001, ticket);
+
+            Logger.Information($"Removing Owner Group Permission");
+            await DeleteNodeOwnerGroupPermission(nodeId, ticket);
+        }
         public async Task<GetNodeSubnodesResponse> GetNodeFromParentByName(string nodeName, long parentID, int type, string ticket, int limit = 1)
         {
             GetNodeSubnodesResponse result = new();

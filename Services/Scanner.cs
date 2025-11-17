@@ -23,11 +23,12 @@ namespace UploadRecords.Services
         public OTCS OTCS;
         public CSDB CSDB;
         public long RootNodeID;
+        public long UploadNodeID;
         public List<GetNodeAcestorsAncestor> RootAncestors = [];
         public List<string> RootFiles = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
         public List<DivisionData> Divisions;
 
-        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions)
+        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions, long uploadNodeID)
         {
             FolderPath = batchPath;
             LogPath = logPath;
@@ -35,6 +36,7 @@ namespace UploadRecords.Services
             CSDB = csdb;
             ControlFile = controlFile;
             Divisions = divisions;
+            UploadNodeID = uploadNodeID;
         }
 
         public async Task ScanValidFiles()
@@ -43,14 +45,28 @@ namespace UploadRecords.Services
             {
                 var subBatchFolder = Path.Combine(FolderPath, ControlFile.FolderRef);
 
+                if(!Path.Exists(subBatchFolder))
+                {
+                    Logger.Error($"{subBatchFolder} path is not exist...");
+
+                    // Add XXXX_ prefix format
+                    ControlFile.FolderRef = int.Parse(ControlFile.FolderRef.Split('_').Last().Replace("Vol ", "")).ToString("D4") + "_" + ControlFile.FolderRef;
+                    subBatchFolder = Path.Combine(FolderPath, ControlFile.FolderRef);
+                    if (!Path.Exists(subBatchFolder))
+                    {
+                        Logger.Error($"{subBatchFolder} path is also not exist, skipped...");
+                        return;
+                    }
+                }
+
                 Logger.Information($"Processing {subBatchFolder}");
 
                 string root = Path.GetPathRoot(subBatchFolder);
                 ControlFile.FolderPath = subBatchFolder.Substring(root.Length).Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                 string manifestFilePath = Path.Combine(subBatchFolder, ManifestFileName);
-                var manifest = Manifest.ReadManifest(manifestFilePath);
                 var logsPath = Path.Combine(LogPath, Path.GetFileName(subBatchFolder));
+                var manifest = Manifest.ReadManifest(manifestFilePath);
 
                 // Manifest not found
                 if (manifest == null)
@@ -67,7 +83,9 @@ namespace UploadRecords.Services
                     return;
                 }
 
-                var nodeId = await Common.CreateFolderIfNotExist(CSDB, OTCS, ControlFile.FolderPath, Divisions);
+                var folder = await OTCS.CreateFolder(Path.GetFileName(FolderPath), UploadNodeID, getTicket.Ticket!, Divisions);
+                var folder2 = await OTCS.CreateFolder(ControlFile.FolderRef, folder.Id, getTicket.Ticket!, Divisions);
+                var nodeId = folder2.Id;
                 var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
                 var ancestors = getAncestors.Ancestors;
 
@@ -103,7 +121,7 @@ namespace UploadRecords.Services
                 {
                     var fileRefFolderName = Path.GetFileName(fileRefFolder);
 
-                    var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, getTicket.Ticket!);
+                    var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, getTicket.Ticket!, Divisions);
 
                     // Failed to create batch folder
                     if (createFileRefFolder.Error != null)
@@ -129,7 +147,7 @@ namespace UploadRecords.Services
 
                         if (Path.Exists(filesPath))
                         {
-                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!);
+                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions);
 
                             // Failed to create batch folder
                             if (createFileFolder.Error != null)
