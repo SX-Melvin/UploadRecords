@@ -112,6 +112,10 @@ namespace UploadRecords.Services
                         PermissionInfo = new()
                         {
                             Division = new()
+                            {
+                                UpdateBasedOnMetadata = false,
+                                NoRepPermission = true
+                            }
                         }
                     };
                     ValidFiles.Add(batchFile);

@@ -164,6 +164,19 @@ namespace UploadRecords.Services
                         }
                     }
                 }
+                
+                // Remove all division access
+                if(item.File.PermissionInfo.Division.NoRepPermission)
+                {
+                    Logger.Information($"Removing Division Permissions");
+                    foreach (var div in Division)
+                    {
+                        foreach (var data in div.PrepDatas)
+                        {
+                            await otcs.DeleteNodePermission(upload.Id, data.ID, ticket);
+                        }
+                    }
+                }
 
                 Logger.Information($"Updating Admin Permission To Full Control");
                 await otcs.UpdateNodePermissionBulk(upload.Id, [new() {
