@@ -36,6 +36,7 @@ namespace UploadRecords.Services
             CSDB = csdb;
             ControlFile = controlFile;
             Divisions = divisions;
+            Divisions.ForEach(x => x.UsedInNote2 = x.Name == controlFile.Note2);
             UploadNodeID = uploadNodeID;
         }
 
@@ -151,15 +152,7 @@ namespace UploadRecords.Services
 
                         if (Path.Exists(filesPath))
                         {
-                            var divisions = Divisions;
-
-                            if(folderFile == "access")
-                            {
-                                // For access folder, we want to inherit division from Note2
-                                divisions = Divisions.Where(x => !string.Equals(x.Name, ControlFile.Note2, StringComparison.OrdinalIgnoreCase)).ToList();
-                            }
-
-                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, divisions);
+                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions);
 
                             // Failed to create batch folder
                             if (createFileFolder.Error != null)

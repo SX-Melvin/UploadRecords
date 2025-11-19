@@ -9,6 +9,7 @@ namespace UploadRecords.Models
 {
     public class DivisionData: DivisionConfiguration
     {
+        public bool UsedInNote2 { get; set; } = false;
         public List<KUAF> PrepDatas { get; set; } = [];
     }
 }

@@ -226,9 +226,15 @@ namespace UploadRecords.Services
                     }
                 ];
 
-            foreach (var division in divisions)
+            // If folder is access, only give access to note2 divisions
+            if (folderName == "access")
             {
-                foreach (var prep in division.PrepDatas ?? [])
+                foreach (var division in divisions.FirstOrDefault(d => !d.UsedInNote2)?.PrepDatas ?? [])
+                {
+                    await DeleteNodePermission(nodeId, division.ID, ticket);
+                }
+
+                foreach (var prep in divisions.FirstOrDefault(d => d.UsedInNote2)?.PrepDatas ?? [])
                 {
                     permissionDatas.Add(new()
                     {
@@ -236,11 +242,26 @@ namespace UploadRecords.Services
                         RightID = prep.ID,
                     });
                 }
+            } 
+            else 
+            {
+                foreach (var division in divisions)
+                {
+                    foreach (var prep in division.PrepDatas ?? [])
+                    {
+                        permissionDatas.Add(new()
+                        {
+                            Permissions = ["see", "see_contents"],
+                            RightID = prep.ID,
+                        });
+                    }
+                }
             }
 
-            Logger.Information($"Updating Division Access Permission And Admin To Folder {folderName}");
 
+            Logger.Information($"Updating Division Access Permission And Admin To Folder {folderName}");
             await UpdateNodePermissionBulk(nodeId, permissionDatas, ticket);
+
             Logger.Information($"Removing Public Access Permission To Folder {folderName}");
             await DeleteNodePublicPermission(nodeId, ticket);
 
