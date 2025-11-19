@@ -11,7 +11,8 @@ namespace UploadRecords.Models
     {
         public long ReportNodeLocationID { get; set; }
         public OTCS OTCS { get; set; }
-        public Scanner Scanner { get; set; }
+        public string BatchNumber { get; set; }
+        public List<BatchFile> InvalidFiles { get; set; }
         public Uploader Uploader { get; set; }
     }
 }

@@ -56,6 +56,10 @@ var mailConfig = new MailConfiguration()
     Port = emailPort
 };
 var division = Division.GetDivisionDatas(divisions, csdb);
+List<BatchFile> allBatchFiles = [];
+List<BatchFile> allInvalidBatchFiles = [];
+string batchNumber = "";
+
 try
 {
     string controlFilePath = Path.Combine(batchFolder, controlFileName);
@@ -67,6 +71,7 @@ try
         Logger.Error($"Control file not found on {controlFilePath}, skipped...");
         return;
     }
+
     for (global::System.Int32 i = 0; i < metadatas.Count; i++)
     {
         var metadata = metadatas[i];
@@ -78,9 +83,16 @@ try
         if (i == 0)
         {
             await scanner.AddMetadataFileToValidFiles(controlFilePath);
+            batchNumber = scanner.ControlFile.BatchNumber ?? "";
         }
 
-        var queue = new Queue(uploadCount, uploadRetryInterval, scanner.ValidFiles);
+        allBatchFiles.AddRange(scanner.ValidFiles);
+        allInvalidBatchFiles.AddRange(scanner.InvalidFiles);
+    }
+
+    if(metadatas.Count > 0)
+    {
+        var queue = new Queue(uploadCount, uploadRetryInterval, allBatchFiles);
 
         var uploader = new Uploader(intervalEachRun, division, archiveCat, recordCat);
         await uploader.UploadFiles(otcs, queue);
@@ -89,7 +101,8 @@ try
         {
             OTCS = otcs,
             ReportNodeLocationID = long.Parse(config["OTCS:ReportNodeLocationID"]),
-            Scanner = scanner,
+            InvalidFiles = allInvalidBatchFiles,
+            BatchNumber = batchNumber,
             Uploader = uploader
         }, mailConfig, recipients);
         summarizer.GenerateReport();

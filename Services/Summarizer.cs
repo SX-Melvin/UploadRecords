@@ -19,12 +19,12 @@ namespace UploadRecords.Services
         public Summarizer(SummarizerConfiguration config, MailConfiguration mailConfig, List<string> emailAddresses)
         {
             Config = config;
-            List<BatchFile> files = [.. Config.Scanner.InvalidFiles, .. Config.Uploader.ProcessedFiles];
+            List<BatchFile> files = [.. Config.InvalidFiles, .. Config.Uploader.ProcessedFiles];
 
             BatchFiles = files.OrderBy(x => x.StartDate).ToList(); // Sort Start Time ASC
             EmailAddresses = emailAddresses;
-            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyyHHmm")}_Batch_{Config.Scanner.ControlFile.BatchNumber}.xlsx";
-            BatchNumber = Config.Scanner.ControlFile.BatchNumber;
+            ReportFileName = $"{DateTime.Now.ToString("ddMMyyyyHHmm")}_Batch_{Config.BatchNumber}.xlsx";
+            BatchNumber = Config.BatchNumber;
             MailConfiguration = mailConfig;
         }
 
