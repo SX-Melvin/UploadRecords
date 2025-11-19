@@ -72,7 +72,7 @@ try
         return;
     }
 
-    for (global::System.Int32 i = 0; i < metadatas.Count; i++)
+    for (int i = 0; i < metadatas.Count; i++)
     {
         var metadata = metadatas[i];
 
@@ -111,6 +111,6 @@ try
 }
 catch (Exception ex)
 {
-    Logger.Error($"An erro occured {ex.Message}");
+    Logger.Error($"An error occured {ex.Message}");
 }
 // End Logic

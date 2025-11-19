@@ -151,7 +151,15 @@ namespace UploadRecords.Services
 
                         if (Path.Exists(filesPath))
                         {
-                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions);
+                            var divisions = Divisions;
+
+                            if(folderFile == "access")
+                            {
+                                // For access folder, we want to inherit division from Note2
+                                divisions = Divisions.Where(x => !string.Equals(x.Name, ControlFile.Note2, StringComparison.OrdinalIgnoreCase)).ToList();
+                            }
+
+                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, divisions);
 
                             // Failed to create batch folder
                             if (createFileFolder.Error != null)

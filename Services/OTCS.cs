@@ -218,6 +218,7 @@ namespace UploadRecords.Services
         }
         public async Task UpdateFolderPermission(long nodeId, string folderName, string ticket, List<DivisionData> divisions)
         {
+
             List<UpdateNodePermissionData> permissionDatas = [
                     new() {
                         Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
@@ -238,8 +239,8 @@ namespace UploadRecords.Services
             }
 
             Logger.Information($"Updating Division Access Permission And Admin To Folder {folderName}");
-            await UpdateNodePermissionBulk(nodeId, permissionDatas, ticket);
 
+            await UpdateNodePermissionBulk(nodeId, permissionDatas, ticket);
             Logger.Information($"Removing Public Access Permission To Folder {folderName}");
             await DeleteNodePublicPermission(nodeId, ticket);
 
