@@ -25,10 +25,11 @@ namespace UploadRecords.Services
         public long RootNodeID;
         public long UploadNodeID;
         public List<GetNodeAcestorsAncestor> RootAncestors = [];
+        public List<long> FunctionAdminIDs = [];
         public List<string> RootFiles = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
         public List<DivisionData> Divisions;
 
-        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions, long uploadNodeID)
+        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions, long uploadNodeID, List<long> functionAdminIDs)
         {
             FolderPath = batchPath;
             LogPath = logPath;
@@ -38,6 +39,7 @@ namespace UploadRecords.Services
             Divisions = divisions;
             Divisions.ForEach(x => x.UsedInNote2 = x.Name == controlFile.Note2);
             UploadNodeID = uploadNodeID;
+            FunctionAdminIDs = functionAdminIDs;
         }
 
         public async Task ScanValidFiles()
@@ -84,8 +86,8 @@ namespace UploadRecords.Services
                     return;
                 }
 
-                var folder = await OTCS.CreateFolder(Path.GetFileName(FolderPath), UploadNodeID, getTicket.Ticket!, Divisions);
-                var folder2 = await OTCS.CreateFolder(ControlFile.FolderRef, folder.Id, getTicket.Ticket!, Divisions);
+                var folder = await OTCS.CreateFolder(Path.GetFileName(FolderPath), UploadNodeID, getTicket.Ticket!, Divisions, FunctionAdminIDs);
+                var folder2 = await OTCS.CreateFolder(ControlFile.FolderRef, folder.Id, getTicket.Ticket!, Divisions, FunctionAdminIDs);
                 var nodeId = folder2.Id;
                 var getAncestors = await OTCS.GetNodeAncestors(nodeId, getTicket.Ticket!);
                 var ancestors = getAncestors.Ancestors;
@@ -126,7 +128,7 @@ namespace UploadRecords.Services
                 {
                     var fileRefFolderName = Path.GetFileName(fileRefFolder);
 
-                    var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, getTicket.Ticket!, Divisions);
+                    var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, getTicket.Ticket!, Divisions, FunctionAdminIDs);
 
                     // Failed to create batch folder
                     if (createFileRefFolder.Error != null)
@@ -152,7 +154,7 @@ namespace UploadRecords.Services
 
                         if (Path.Exists(filesPath))
                         {
-                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions);
+                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions, FunctionAdminIDs);
 
                             // Failed to create batch folder
                             if (createFileFolder.Error != null)

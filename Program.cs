@@ -77,7 +77,7 @@ try
     {
         var metadata = metadatas[i];
 
-        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata, division, batchUploadNodeID);
+        var scanner = new Scanner(batchFolder, logPath, csdb, otcs, metadata, division, batchUploadNodeID, functionalAdminIDs);
         await scanner.ScanValidFiles();
         
         // Add metadata.xlsx on first loop

@@ -175,7 +175,7 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket, List<DivisionData> divisions)
+        public async Task<CreateFolderResponse> CreateFolder(string folderName, long parentID, string ticket, List<DivisionData> divisions, List<long> functionalAdminIds)
         {
             CreateFolderResponse result = new();
 
@@ -211,55 +211,35 @@ namespace UploadRecords.Services
                     return result;
                 }
 
-                await UpdateFolderPermission(result.Id, folderName, ticket, divisions);
+                await UpdateFolderPermission(result.Id, folderName, ticket, divisions, functionalAdminIds);
             }
 
             return result;
         }
-        public async Task UpdateFolderPermission(long nodeId, string folderName, string ticket, List<DivisionData> divisions)
+        public async Task UpdateFolderPermission(long nodeId, string folderName, string ticket, List<DivisionData> divisions, List<long> functionalAdminIds)
         {
-
             List<UpdateNodePermissionData> permissionDatas = [];
-
-            // If folder is access, only give access to note2 divisions
-            Logger.Information($"folderName: {folderName} - {folderName == "access"}");
-            Logger.Information($"folderName: {JsonConvert.SerializeObject(divisions)}");
-            if (folderName == "access")
+            foreach (var item in functionalAdminIds)
             {
-                foreach (var division in divisions.Where(d => !d.UsedInNote2) ?? [])
+                permissionDatas.Add(new()
                 {
-                    foreach (var item in division.PrepDatas)
-                    {
-                        Logger.Information($"Removing {item.Name} Access Permission From Folder {folderName}");
-                        await DeleteNodePermission(nodeId, item.ID, ticket);
-                    }
-                }
+                    Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
+                    RightID = item
+                });
+            }
 
-                foreach (var prep in divisions.FirstOrDefault(d => d.UsedInNote2)?.PrepDatas ?? [])
+            Logger.Information($"folderName: {folderName} - {folderName == "access"}");
+            foreach (var division in divisions)
+            {
+                foreach (var prep in division.PrepDatas ?? [])
                 {
-                    Logger.Information($"Adding {prep.Name} Access Permission To Folder {folderName}");
                     permissionDatas.Add(new()
                     {
                         Permissions = ["see", "see_contents"],
                         RightID = prep.ID,
                     });
                 }
-            } 
-            else 
-            {
-                foreach (var division in divisions)
-                {
-                    foreach (var prep in division.PrepDatas ?? [])
-                    {
-                        permissionDatas.Add(new()
-                        {
-                            Permissions = ["see", "see_contents"],
-                            RightID = prep.ID,
-                        });
-                    }
-                }
             }
-
 
             Logger.Information($"Updating Division Access Permission And Admin To Folder {folderName}");
             await UpdateNodePermissionBulk(nodeId, permissionDatas, ticket);
