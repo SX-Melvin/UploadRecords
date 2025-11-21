@@ -9,21 +9,33 @@ namespace UploadRecords.Services
     {
         public int IntervalBetweenFiles { get; set; } = 0;
         public List<BatchFile> ProcessedFiles = [];
+        public List<long> FunctionalAdminIDs = [];
         public CategoryConfiguration<ArchiveCategory> ArchiveCategory;
         public CategoryConfiguration<_RecordCategory> RecordCategory;
         public List<DivisionData> Division;
         
-        public Uploader(int intervalBetweenFiles, List<DivisionData> division, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory)
+        public Uploader(int intervalBetweenFiles, List<DivisionData> division, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory, List<long> functionalAdminIDs)
         {
             IntervalBetweenFiles = intervalBetweenFiles;
             ArchiveCategory = archiveCategory;
             RecordCategory = recordCategory;
             Division = division;
+            FunctionalAdminIDs = functionalAdminIDs;
         }
 
         public async Task UploadFiles(OTCS otcs, Queue queue) 
         {
             Logger.Information($"Beginning Upload");
+
+            List<UpdateNodePermissionData> functionalAdminPermissions = [];
+            foreach (var item in FunctionalAdminIDs)
+            {
+                functionalAdminPermissions.Add(new()
+                {
+                    Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
+                    RightID = item
+                });
+            }
 
             string? ticket = null;
 
@@ -76,7 +88,7 @@ namespace UploadRecords.Services
 
                     if (ticket != null)
                     {
-                        var result = await UploadSingleFile(otcs, queue, item, ticket);
+                        var result = await UploadSingleFile(otcs, queue, item, functionalAdminPermissions, ticket);
 
                         if (result == 1)
                         {
@@ -122,7 +134,7 @@ namespace UploadRecords.Services
             Logger.Information($"Upload Completed");
         }
 
-        public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, string ticket)
+        public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, List<UpdateNodePermissionData> functionalAdminPerms, string ticket)
         {
             int result = 0;
 
@@ -179,10 +191,7 @@ namespace UploadRecords.Services
                 }
 
                 Logger.Information($"Updating Admin Permission To Full Control");
-                await otcs.UpdateNodePermissionBulk(upload.Id, [new() {
-                    Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
-                    RightID = 1000 // Functional Admin
-                }], ticket);
+                await otcs.UpdateNodePermissionBulk(upload.Id, functionalAdminPerms, ticket);
 
                 Logger.Information($"Updating Public Access Permission");
                 await otcs.DeleteNodePublicPermission(upload.Id, ticket);

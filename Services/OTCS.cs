@@ -219,23 +219,25 @@ namespace UploadRecords.Services
         public async Task UpdateFolderPermission(long nodeId, string folderName, string ticket, List<DivisionData> divisions)
         {
 
-            List<UpdateNodePermissionData> permissionDatas = [
-                    new() {
-                        Permissions = ["see", "see_contents", "modify", "edit_attributes", "add_items", "reserve", "add_major_version", "delete_versions", "delete", "edit_permissions"],
-                        RightID = 1000 // Functional Admin
-                    }
-                ];
+            List<UpdateNodePermissionData> permissionDatas = [];
 
             // If folder is access, only give access to note2 divisions
+            Logger.Information($"folderName: {folderName} - {folderName == "access"}");
+            Logger.Information($"folderName: {JsonConvert.SerializeObject(divisions)}");
             if (folderName == "access")
             {
-                foreach (var division in divisions.FirstOrDefault(d => !d.UsedInNote2)?.PrepDatas ?? [])
+                foreach (var division in divisions.Where(d => !d.UsedInNote2) ?? [])
                 {
-                    await DeleteNodePermission(nodeId, division.ID, ticket);
+                    foreach (var item in division.PrepDatas)
+                    {
+                        Logger.Information($"Removing {item.Name} Access Permission From Folder {folderName}");
+                        await DeleteNodePermission(nodeId, item.ID, ticket);
+                    }
                 }
 
                 foreach (var prep in divisions.FirstOrDefault(d => d.UsedInNote2)?.PrepDatas ?? [])
                 {
+                    Logger.Information($"Adding {prep.Name} Access Permission To Folder {folderName}");
                     permissionDatas.Add(new()
                     {
                         Permissions = ["see", "see_contents"],

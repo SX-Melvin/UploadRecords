@@ -25,6 +25,7 @@ var otcsApiUrl = Registry.GetRegistryValue("otcsapiurl"); // OTCS API url
 List<string> recipients = config.GetSection("Batch:Recipients").Get<List<string>>(); // To who are we sending the email report
 string controlFileName = "metadata.xlsx"; // Control file name
 long batchUploadNodeID = long.Parse(config["Batch:UploadFolderNodeID"]); // Where to upload the files / folder
+List<long> functionalAdminIDs = config.GetSection("FunctionalAdminID").Get<List<long>>(); // Functional admin IDs
 
 Logger.Information("DB Connection String " + dbConnectionStr);
 
@@ -94,7 +95,7 @@ try
     {
         var queue = new Queue(uploadCount, uploadRetryInterval, allBatchFiles);
 
-        var uploader = new Uploader(intervalEachRun, division, archiveCat, recordCat);
+        var uploader = new Uploader(intervalEachRun, division, archiveCat, recordCat, functionalAdminIDs);
         await uploader.UploadFiles(otcs, queue);
 
         var summarizer = new Summarizer(new()

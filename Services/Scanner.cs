@@ -189,7 +189,8 @@ namespace UploadRecords.Services
                                     {
                                         Division = new()
                                         {
-                                            UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf"
+                                            UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf",
+                                            NoRepPermission = Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif"
                                         }
                                     }
                                 };
