@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using UploadRecords.Models;
 using UploadRecords.Services;
@@ -27,7 +28,9 @@ string controlFileName = "metadata.xlsx"; // Control file name
 long batchUploadNodeID = long.Parse(config["Batch:UploadFolderNodeID"]); // Where to upload the files / folder
 List<long> functionalAdminIDs = config.GetSection("FunctionalAdminID").Get<List<long>>(); // Functional admin IDs
 
-Logger.Information("DB Connection String " + dbConnectionStr);
+var builder = new SqlConnectionStringBuilder(dbConnectionStr);
+builder.Password = new string('*', builder.Password.Length);
+Logger.Information("DB Connection String " + builder.ConnectionString);
 
 Logger.Information("Logs Path: " + logPath);
 Logger.Information("Batch Path: " + batchFolder);
