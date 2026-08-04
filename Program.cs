@@ -22,14 +22,19 @@ var uploadRetryInterval = 1000 * 60 * 30; // 30 Mins
 var intervalEachRun = 0; // How long we wait to upload the next file
 var otcsUsername = Registry.GetRegistryValue("otuser"); // OTCS account user
 var otcsSecret = Registry.GetRegistryValue("otkey"); // OTCS account pwd
+var dbUsername = Registry.GetRegistryValue("dbuser"); // DB account user
+var dbPassword = Registry.GetRegistryValue("dbkey"); // DB account pwd
 var otcsApiUrl = Registry.GetRegistryValue("otcsapiurl"); // OTCS API url
 List<string> recipients = config.GetSection("Batch:Recipients").Get<List<string>>(); // To who are we sending the email report
 string controlFileName = "metadata.xlsx"; // Control file name
 long batchUploadNodeID = long.Parse(config["Batch:UploadFolderNodeID"]); // Where to upload the files / folder
 List<long> functionalAdminIDs = config.GetSection("FunctionalAdminID").Get<List<long>>(); // Functional admin IDs
 
-var builder = new SqlConnectionStringBuilder(dbConnectionStr);
-builder.Password = new string('*', builder.Password.Length);
+var builder = new SqlConnectionStringBuilder(dbConnectionStr)
+{
+    UserID = dbUsername,
+    Password = new string('*', dbPassword.Length)
+};
 Logger.Information("DB Connection String " + builder.ConnectionString);
 
 Logger.Information("Logs Path: " + logPath);
@@ -47,12 +52,12 @@ Logger.Information("Recipients: " + string.Join(", ", recipients));
 
 // Start Logic
 
+builder.Password = dbPassword;
 var archiveCat = Configuration.GetArchiveCategories(config);
 var recordCat = Configuration.GetRecordCategories(config);
 var divisions = Configuration.GetDivisionPrep(config);
-
 var otcs = new OTCS(otcsUsername, otcsSecret, otcsApiUrl);
-var csdb = new CSDB(dbConnectionStr);
+var csdb = new CSDB(builder.ConnectionString);
 var mailConfig = new MailConfiguration()
 {
     Host = emailHost,
