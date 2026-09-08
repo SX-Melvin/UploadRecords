@@ -10,8 +10,8 @@ namespace UploadRecords.Models
         public required string Path { get; set; }
         public required string LogDirectory { get; set; }
         public string? Checksum { get; set; } = null;
-        public ControlFile ControlFile { get; set; }
-        public string Remarks { get; set; }
+        public required ControlFile ControlFile { get; set; }
+        public string? Remarks { get; set; }
         public BatchFileStatus Status { get; set; }
         public int Attempt { get; set; } = 1;
         public double SizeInKB { get; set; }
@@ -20,10 +20,10 @@ namespace UploadRecords.Models
         public required string BatchFolderPath { get; set; }
         public required string? SubBatchFolderPath { get; set; } = null;
         public required PermissionInfo PermissionInfo { get; set; }
-        public required ValidFileOTCS OTCS { get; set; }
+        public required ValidFileOtcs OTCS { get; set; }
     }
 
-    public class ValidFileOTCS
+    public class ValidFileOtcs
     {
         public required long ParentID { get; set; }
         public required List<GetNodeAcestorsAncestor> Ancestors { get; set; }

@@ -28,11 +28,11 @@ namespace UploadRecords.Utils
                     Thank you.
                 """;
 
-                var smtp = new SmtpClient
+                using var smtp = new SmtpClient
                 {
                     Host = config.Host,
                     Port = config.Port,
-                    EnableSsl = false,
+                    EnableSsl = true,
                     UseDefaultCredentials = true,
                 };
 

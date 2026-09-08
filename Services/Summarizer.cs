@@ -10,8 +10,8 @@ namespace UploadRecords.Services
         public long ReportNodeID { get; set; }
         public List<BatchFile> BatchFiles { get; set; }
         public List<string> EmailAddresses { get; set; }
-        public MailAddress Sender { get; set; }
-        public string ReportPath { get; set; }
+        public MailAddress? Sender { get; set; }
+        public string ReportPath { get; set; } = string.Empty;
         public string ReportFileName { get; set; }
         public string BatchNumber { get; set; }
         public MailConfiguration MailConfiguration { get; set; }
@@ -36,9 +36,9 @@ namespace UploadRecords.Services
         public async Task SendMail()
         {
             var ticket = await Config.OTCS.GetTicket();
-            if(ticket.Error != null)
+            if(ticket.Error != null || string.IsNullOrEmpty(ticket.Ticket))
             {
-                var remarks = $"Fail to upload report file due to {ticket.Error}";
+                var remarks = $"Fail to upload report file due to {ticket.Error ?? "ticket is empty"}";
                 Audit.Fail(BatchFiles[0].LogDirectory, $"{remarks} - {Common.ListAncestors(BatchFiles[0].OTCS.Ancestors)}");
                 return;
             }

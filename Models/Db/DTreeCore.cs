@@ -13,7 +13,7 @@ namespace UploadRecords.Models.Db
     {
         [Key]
         public long DataID { get; set; }
-        public string Name { get; set; }
+        public required string Name { get; set; }
         public long ParentID { get; set; }
     }
 }

@@ -10,7 +10,7 @@ namespace UploadRecords.Utils
 {
     public static class Division
     {
-        public static List<DivisionData> GetDivisionDatas(List<DivisionConfiguration> config, CSDB csdb) {
+        public static List<DivisionData> GetDivisionDatas(List<DivisionConfiguration> config, Csdb csdb) {
             List<DivisionData> result = [];
 
             foreach (var item in config)

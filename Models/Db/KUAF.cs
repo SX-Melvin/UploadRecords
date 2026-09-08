@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 namespace UploadRecords.Models.Db
 {
     [Table("Kuaf")]
-    public class KUAF
+    public class Kuaf
     {
         [Key]
         public long ID { get; set; }
-        public string Name { get; set; }
+        public required string Name { get; set; }
         public long Type { get; set; }
     }
 }

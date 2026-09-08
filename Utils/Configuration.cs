@@ -5,18 +5,29 @@ namespace UploadRecords.Utils
 {
     public static class Configuration
     {
+        public static string GetRequiredValue(IConfiguration config, string key)
+        {
+            var value = config[key];
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new InvalidOperationException($"Required configuration '{key}' is missing or empty.");
+            }
+
+            return value;
+        }
+
         public static CategoryConfiguration<ArchiveCategory> GetArchiveCategories(IConfigurationRoot config)
         {
             return new()
             {
-                ID = Int64.Parse(config["Category:Archives:ID"]),
+                ID = Int64.Parse(GetRequiredValue(config, "Category:Archives:ID")),
                 Rows = new()
                 {
-                    AuthorityNumber = config["Category:Archives:Rows:AuthorityNumber"],
-                    RecordSeriesTitle = config["Category:Archives:Rows:RecordSeriesTitle"],
-                    TransferDate = config["Category:Archives:Rows:TransferDate"],
-                    RecordType = config["Category:Archives:Rows:RecordType"],
-                    MicrofilmNumber = config["Category:Archives:Rows:MicrofilmNumber"],
+                    AuthorityNumber = GetRequiredValue(config, "Category:Archives:Rows:AuthorityNumber"),
+                    RecordSeriesTitle = GetRequiredValue(config, "Category:Archives:Rows:RecordSeriesTitle"),
+                    TransferDate = GetRequiredValue(config, "Category:Archives:Rows:TransferDate"),
+                    RecordType = GetRequiredValue(config, "Category:Archives:Rows:RecordType"),
+                    MicrofilmNumber = GetRequiredValue(config, "Category:Archives:Rows:MicrofilmNumber"),
                 }
             };
         }
@@ -38,14 +49,14 @@ namespace UploadRecords.Utils
 
             return divisions;
         }
-        public static CategoryConfiguration<_RecordCategory> GetRecordCategories(IConfigurationRoot config)
+        public static CategoryConfiguration<RecordCategory> GetRecordCategories(IConfigurationRoot config)
         {
             return new()
             {
-                ID = Int64.Parse(config["Category:_Record:ID"]),
+                ID = Int64.Parse(GetRequiredValue(config, "Category:_Record:ID")),
                 Rows = new()
                 {
-                    SecurityClassification = config["Category:_Record:Rows:SecurityClassification"],
+                    SecurityClassification = GetRequiredValue(config, "Category:_Record:Rows:SecurityClassification"),
                 }
             };
         }

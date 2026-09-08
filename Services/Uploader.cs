@@ -8,13 +8,13 @@ namespace UploadRecords.Services
     public class Uploader
     {
         public int IntervalBetweenFiles { get; set; } = 0;
-        public List<BatchFile> ProcessedFiles = [];
-        public List<long> FunctionalAdminIDs = [];
-        public CategoryConfiguration<ArchiveCategory> ArchiveCategory;
-        public CategoryConfiguration<_RecordCategory> RecordCategory;
-        public List<DivisionData> Division;
-        
-        public Uploader(int intervalBetweenFiles, List<DivisionData> division, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<_RecordCategory> recordCategory, List<long> functionalAdminIDs)
+        public List<BatchFile> ProcessedFiles { get; set; } = [];
+        public List<long> FunctionalAdminIDs { get; set; }
+        public CategoryConfiguration<ArchiveCategory> ArchiveCategory { get; set; }
+        public CategoryConfiguration<RecordCategory> RecordCategory { get; set; }
+        public List<DivisionData> Division { get; set; }
+
+        public Uploader(int intervalBetweenFiles, List<DivisionData> division, CategoryConfiguration<ArchiveCategory> archiveCategory, CategoryConfiguration<RecordCategory> recordCategory, List<long> functionalAdminIDs)
         {
             IntervalBetweenFiles = intervalBetweenFiles;
             ArchiveCategory = archiveCategory;
@@ -23,7 +23,7 @@ namespace UploadRecords.Services
             FunctionalAdminIDs = functionalAdminIDs;
         }
 
-        public async Task UploadFiles(OTCS otcs, Queue queue) 
+        public async Task UploadFiles(Otcs otcs, Queue queue)
         {
             Logger.Information($"Beginning Upload");
 
@@ -41,14 +41,6 @@ namespace UploadRecords.Services
 
             while(queue.Queues.Count > 0)
             {
-                // LOGGING PURPOSE
-                //var nearest = queue.Queues.OrderBy(x => x.RunAt).FirstOrDefault();
-                //if (nearest != null)
-                //{
-                //    Logger.Information($"The nearest queue is {nearest.RunAt.ToString("MM/dd HH:mm:ss")} - {nearest.File.Path}");
-                //}
-                // LOGGING PURPOSE
-
                 var item = queue.GetScheduled();
 
                 if (item != null)
@@ -67,7 +59,7 @@ namespace UploadRecords.Services
             Logger.Information($"Upload Completed");
         }
 
-        private async Task<(string? Ticket, bool SkipDelay)> ProcessScheduledFile(OTCS otcs, Queue queue,
+        private async Task<(string? Ticket, bool SkipDelay)> ProcessScheduledFile(Otcs otcs, Queue queue,
             QueueItem item, List<UpdateNodePermissionData> functionalAdminPermissions, string? ticket)
         {
             if (item.TotalRun >= queue.MaxRun)
@@ -146,7 +138,7 @@ namespace UploadRecords.Services
             return (ticket, false);
         }
 
-        public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, List<UpdateNodePermissionData> functionalAdminPerms, string ticket)
+        public async Task<int> UploadSingleFile(Otcs otcs, Queue queue, QueueItem item, List<UpdateNodePermissionData> functionalAdminPerms, string ticket)
         {
             int result = 0;
 
@@ -188,7 +180,7 @@ namespace UploadRecords.Services
                         }
                     }
                 }
-                
+
                 // Remove all division access
                 if(item.File.PermissionInfo.Division.NoRepPermission)
                 {
@@ -213,7 +205,7 @@ namespace UploadRecords.Services
 
                 Logger.Information($"Removing Business Adminstrators Permission");
                 await otcs.DeleteNodePermission(upload.Id, 2001, ticket);
-                
+
                 Logger.Information($"Removing Owner Group Permission");
                 await otcs.DeleteNodeOwnerGroupPermission(upload.Id, ticket);
 

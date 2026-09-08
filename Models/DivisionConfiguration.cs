@@ -8,7 +8,7 @@ namespace UploadRecords.Models
 {
     public class DivisionConfiguration
     {
-        public string Name { get; set; }
+        public required string Name { get; set; }
         public List<string> Preps { get; set; } = [];
     }
 }

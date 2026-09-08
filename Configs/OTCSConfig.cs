@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace UploadRecords.Configs
 {
-    public class OTCSConfig
+    public class OtcsConfig
     {
-        public string APIUrl { get; set; }
-        public string Username { get; set; }
-        public string Secret { get; set; }
+        public required string APIUrl { get; set; }
+        public required string Username { get; set; }
+        public required string Secret { get; set; }
     }
 }

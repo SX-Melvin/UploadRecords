@@ -12,7 +12,7 @@ namespace UploadRecords.Utils
     {
         public static string ConvertArchiveCategoryToJSON(CategoryConfiguration<ArchiveCategory> cat, ControlFile controlFile)
         {
-            var body = new Dictionary<string, object>
+            var body = new Dictionary<string, object?>
             {
                 ["category_id"] = cat.ID,
                 [cat.Rows.MicrofilmNumber] = controlFile.MicrofilmNumber,
@@ -24,9 +24,9 @@ namespace UploadRecords.Utils
 
             return JsonConvert.SerializeObject(body);
         }
-        public static string ConvertRecordCategoryToJSON(CategoryConfiguration<_RecordCategory> cat, ControlFile controlFile)
+        public static string ConvertRecordCategoryToJSON(CategoryConfiguration<RecordCategory> cat, ControlFile controlFile)
         {
-            var body = new Dictionary<string, object>
+            var body = new Dictionary<string, object?>
             {
                 ["category_id"] = cat.ID,
                 [cat.Rows.SecurityClassification] = string.IsNullOrEmpty(controlFile.FolderSecurityGrading) ? "Confidential" : controlFile.FolderSecurityGrading,

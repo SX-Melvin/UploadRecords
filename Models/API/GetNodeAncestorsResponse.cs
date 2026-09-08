@@ -9,22 +9,22 @@ namespace UploadRecords.Models.API
 {
     public class GetNodeAncestorsResponse : CommonResponse
     {
-        public List<GetNodeAcestorsAncestor> Ancestors { get; set; } = null;
+        public List<GetNodeAcestorsAncestor> Ancestors { get; set; } = [];
     }
 
-    public class GetNodeAcestorsAncestor 
-    { 
+    public class GetNodeAcestorsAncestor
+    {
         public long Id { get; set; }
         public int Type { get; set; }
-        public string Name { get; set; }
+        public required string Name { get; set; }
 
         [JsonProperty("volume_id")]
         public int VolumeId { get; set; }
 
         [JsonProperty("parent_id")]
-        public long ParentID { get; set; }   
+        public long ParentID { get; set; }
 
         [JsonProperty("type_name")]
-        public string TypeName { get; set; }   
+        public string? TypeName { get; set; }
     }
 }

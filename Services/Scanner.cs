@@ -11,30 +11,28 @@ namespace UploadRecords.Services
 {
     public class Scanner
     {
-        public string FolderPath;
-        public string LogPath;
-        public string ControlFileName = "metadata.xlsx";
-        public string ManifestFileName = "manifest-sha256.txt";
-        public ControlFile ControlFile;
-        public List<string> FoldersContainsFile = ["master", "access"];
-        public List<string> ValidFileExtensions = [".tiff", ".pdf", ".tif"];
-        public List<BatchFile> InvalidFiles = [];
-        public List<BatchFile> ValidFiles = [];
-        public OTCS OTCS;
-        public CSDB CSDB;
-        public long RootNodeID;
-        public long UploadNodeID;
-        public List<GetNodeAcestorsAncestor> RootAncestors = [];
-        public List<long> FunctionAdminIDs = [];
-        public List<string> RootFiles = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
-        public List<DivisionData> Divisions;
+        public string FolderPath { get; set; }
+        public string LogPath { get; set; }
+        public string ControlFileName { get; set; } = "metadata.xlsx";
+        public string ManifestFileName { get; set; } = "manifest-sha256.txt";
+        public ControlFile ControlFile { get; set; }
+        public List<string> FoldersContainsFile { get; set; } = ["master", "access"];
+        public List<string> ValidFileExtensions { get; set; } = [".tiff", ".pdf", ".tif"];
+        public List<BatchFile> InvalidFiles { get; set; } = [];
+        public List<BatchFile> ValidFiles { get; set; } = [];
+        public Otcs OTCS { get; set; }
+        public long RootNodeID { get; set; }
+        public long UploadNodeID { get; set; }
+        public List<GetNodeAcestorsAncestor> RootAncestors { get; set; } = [];
+        public List<long> FunctionAdminIDs { get; set; }
+        public List<string> RootFiles { get; set; } = ["bag-info.txt", "bagit.txt", "manifest-sha256.txt", "tagmanifest-sha256.txt"];
+        public List<DivisionData> Divisions { get; set; }
 
-        public Scanner(string batchPath, string logPath, CSDB csdb, OTCS otcs, ControlFile controlFile, List<DivisionData> divisions, long uploadNodeID, List<long> functionAdminIDs)
+        public Scanner(string batchPath, string logPath, Otcs otcs, ControlFile controlFile, List<DivisionData> divisions, long uploadNodeID, List<long> functionAdminIDs)
         {
             FolderPath = batchPath;
             LogPath = logPath;
             OTCS = otcs;
-            CSDB = csdb;
             ControlFile = controlFile;
             Divisions = divisions;
             Divisions.ForEach(x => x.UsedInNote2 = x.Name == controlFile.Note2);
@@ -46,14 +44,15 @@ namespace UploadRecords.Services
         {
             try
             {
-                var subBatchFolder = Path.Combine(FolderPath, ControlFile.FolderRef);
+                var folderRef = ControlFile.FolderRef ?? throw new InvalidOperationException("Folder reference is missing from metadata.");
+                var subBatchFolder = Path.Combine(FolderPath, folderRef);
 
                 if(!Path.Exists(subBatchFolder))
                 {
                     Logger.Error($"{subBatchFolder} path is not exist...");
 
                     // Add XXXX_ prefix format
-                    ControlFile.FolderRef = int.Parse(ControlFile.FolderRef.Split('_').Last().Replace("Vol ", "")).ToString("D4") + "_" + ControlFile.FolderRef;
+                    ControlFile.FolderRef = int.Parse(folderRef.Split('_')[^1].Replace("Vol ", "")).ToString("D4") + "_" + ControlFile.FolderRef;
                     subBatchFolder = Path.Combine(FolderPath, ControlFile.FolderRef);
                     if (!Path.Exists(subBatchFolder))
                     {
@@ -64,7 +63,7 @@ namespace UploadRecords.Services
 
                 Logger.Information($"Processing {subBatchFolder}");
 
-                string root = Path.GetPathRoot(subBatchFolder);
+                string root = Path.GetPathRoot(subBatchFolder) ?? string.Empty;
                 ControlFile.FolderPath = subBatchFolder.Substring(root.Length).Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                 string manifestFilePath = Path.Combine(subBatchFolder, ManifestFileName);

@@ -95,7 +95,7 @@ namespace UploadRecords.Utils
 
                 ControlFile data = new();
 
-                if (DateTime.TryParse(row["TransferDate"]?.ToString(), out DateTime parsedDate))
+                if (DateTime.TryParse(row["TransferDate"]?.ToString(), CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime parsedDate))
                 {
                     data.TransferDate = parsedDate;
                 }

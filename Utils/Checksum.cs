@@ -10,7 +10,7 @@ namespace UploadRecords.Utils
             using var stream = File.OpenRead(filePath);
             var hash = sha256.ComputeHash(stream);
 
-           return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+           return Convert.ToHexStringLower(hash);
         }
     }
 }

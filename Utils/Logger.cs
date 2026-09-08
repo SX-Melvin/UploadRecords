@@ -3,7 +3,7 @@ using Serilog;
 
 namespace UploadRecords.Utils
 {
-    public class Logger
+    public static class Logger
     {
         static Logger()
         {
@@ -15,7 +15,7 @@ namespace UploadRecords.Utils
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.Console()
-                .WriteTo.File(config["Logs:Path"],
+                .WriteTo.File(Configuration.GetRequiredValue(config, "Logs:Path"),
                               rollingInterval: RollingInterval.Day,
                               retainedFileCountLimit: 30)
                 .CreateLogger();

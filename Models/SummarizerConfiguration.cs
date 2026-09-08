@@ -10,9 +10,9 @@ namespace UploadRecords.Models
     public class SummarizerConfiguration
     {
         public long ReportNodeLocationID { get; set; }
-        public OTCS OTCS { get; set; }
-        public string BatchNumber { get; set; }
-        public List<BatchFile> InvalidFiles { get; set; }
-        public Uploader Uploader { get; set; }
+        public required Otcs OTCS { get; set; }
+        public required string BatchNumber { get; set; }
+        public List<BatchFile> InvalidFiles { get; set; } = [];
+        public required Uploader Uploader { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System.Security.Cryptography;
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace UploadRecords.Utils
@@ -8,19 +9,23 @@ namespace UploadRecords.Utils
     {
         public static string GetRegistryValue(string keyToGet, string path = @"SwiftXSolutions\BatchJobCredentials")
         {
-            string result = "";
-            string registryPath = $@"SOFTWARE\{path}";
-            using RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(registryPath);
-            if (key != null)
+            if (!OperatingSystem.IsWindows())
             {
-                string stored = key.GetValue(keyToGet)?.ToString();
-                string decrypted = Unprotect(stored);
-                result = decrypted;
+                throw new PlatformNotSupportedException("Batch job credentials require the Windows registry and DPAPI.");
             }
 
-            return result;
+            string registryPath = $@"SOFTWARE\{path}";
+            using RegistryKey? key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(registryPath);
+            var stored = key?.GetValue(keyToGet)?.ToString();
+            if (string.IsNullOrEmpty(stored))
+            {
+                throw new InvalidOperationException($"Registry credential '{keyToGet}' is missing.");
+            }
+
+            return Unprotect(stored);
         }
 
+        [SupportedOSPlatform("windows")]
         private static string Unprotect(string encryptedText)
         {
             byte[] data = Convert.FromBase64String(encryptedText);

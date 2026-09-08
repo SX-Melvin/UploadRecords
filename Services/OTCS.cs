@@ -7,22 +7,35 @@ using UploadRecords.Utils;
 
 namespace UploadRecords.Services
 {
-    public class OTCS
+    public class Otcs
     {
         readonly string Username;
         readonly string Secret;
-        public string HostUrl;
-        RestClientOptions RestOptions;
-        RestClient Client;
+        public string HostUrl { get; set; }
+        readonly RestClient Client;
+        private const string TicketHeader = "otcsticket";
 
-        public OTCS(string username, string secret, string url) 
+        public Otcs(string username, string secret, string url, HttpMessageHandler? messageHandler = null)
         {
             var uri = new Uri(url);
             this.Username = username;
             this.Secret = secret;
             HostUrl = $"{uri.Scheme}://{uri.Host}";
-            this.RestOptions = new RestClientOptions(url);
-            this.Client = new RestClient(this.RestOptions);
+            var restOptions = new RestClientOptions(url)
+            {
+                ConfigureMessageHandler = messageHandler == null ? null : _ => messageHandler
+            };
+            this.Client = new RestClient(restOptions);
+        }
+
+        private static T? DeserializeResponse<T>(string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new InvalidOperationException("The server returned an empty response.");
+            }
+
+            return JsonConvert.DeserializeObject<T>(content);
         }
 
         public async Task<GetTicketResponse> GetTicket()
@@ -39,7 +52,7 @@ namespace UploadRecords.Services
 
             Logger.Information("v1/auth: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<GetTicketResponse>(response.Content);
+            var data = DeserializeResponse<GetTicketResponse>(response.Content);
 
             if(data != null)
             {
@@ -49,13 +62,13 @@ namespace UploadRecords.Services
             return result;
         }
 
-        public async Task<CreateFileResponse> CreateFile(string filePath, long parentID, string ticket) 
+        public async Task<CreateFileResponse> CreateFile(string filePath, long parentID, string ticket)
         {
             CreateFileResponse result = new();
 
             var request = new RestRequest("v1/nodes", Method.Post);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddParameter("type", 144);
             request.AddParameter("parent_id", parentID);
             request.AddParameter("name", Path.GetFileName(filePath));
@@ -64,7 +77,7 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information("v1/nodes: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+            var data = DeserializeResponse<CreateFileResponse>(response.Content);
 
             if(data != null)
             {
@@ -73,12 +86,12 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task UpdateNodePermissionBulk(long nodeId, List<UpdateNodePermissionData> permissions, string ticket) 
+        public async Task UpdateNodePermissionBulk(long nodeId, List<UpdateNodePermissionData> permissions, string ticket)
         {
             foreach(var perm in permissions)
             {
                 var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom", Method.Post);
-                request.AddHeader("otcsticket", ticket);
+                request.AddHeader(TicketHeader, ticket);
                 request.AddParameter("body", JsonConvert.SerializeObject(new
                 {
                     right_id = perm.RightID,
@@ -91,18 +104,18 @@ namespace UploadRecords.Services
                 Logger.Information($"v2/nodes/{nodeId}/permissions/custom: " + response.Content);
             }
         }
-        public async Task<CommonResponse> DeleteNodePermission(long nodeId, long rightId, string ticket) 
+        public async Task<CommonResponse> DeleteNodePermission(long nodeId, long rightId, string ticket)
         {
             CommonResponse result = new();
 
             var request = new RestRequest($"v2/nodes/{nodeId}/permissions/custom/{rightId}", Method.Delete);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/custom/{rightId}: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CommonResponse>(response.Content);
+            var data = DeserializeResponse<CommonResponse>(response.Content);
 
             if(data != null)
             {
@@ -111,13 +124,13 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CommonResponse> UpdateNodeOwnerPermission(long nodeId, List<string> permissions, string ticket) 
+        public async Task<CommonResponse> UpdateNodeOwnerPermission(long nodeId, List<string> permissions, string ticket)
         {
             CommonResponse result = new();
 
             var request = new RestRequest($"v2/nodes/{nodeId}/permissions/owner", Method.Put);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddParameter("body", JsonConvert.SerializeObject(new
             {
                 permissions
@@ -126,7 +139,7 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/owner: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CommonResponse>(response.Content);
+            var data = DeserializeResponse<CommonResponse>(response.Content);
 
             if(data != null)
             {
@@ -135,18 +148,18 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFileResponse> DeleteNodePublicPermission(long nodeId, string ticket) 
+        public async Task<CreateFileResponse> DeleteNodePublicPermission(long nodeId, string ticket)
         {
             CreateFileResponse result = new();
 
             var request = new RestRequest($"v2/nodes/{nodeId}/permissions/public", Method.Delete);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/public: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+            var data = DeserializeResponse<CreateFileResponse>(response.Content);
 
             if(data != null)
             {
@@ -155,18 +168,18 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<CreateFileResponse> DeleteNodeOwnerGroupPermission(long nodeId, string ticket) 
+        public async Task<CreateFileResponse> DeleteNodeOwnerGroupPermission(long nodeId, string ticket)
         {
             CreateFileResponse result = new();
 
             var request = new RestRequest($"v2/nodes/{nodeId}/permissions/group", Method.Delete);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{nodeId}/permissions/group: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CreateFileResponse>(response.Content);
+            var data = DeserializeResponse<CreateFileResponse>(response.Content);
 
             if(data != null)
             {
@@ -181,7 +194,7 @@ namespace UploadRecords.Services
 
             var request = new RestRequest("v1/nodes", Method.Post);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddParameter("type", 0);
             request.AddParameter("parent_id", parentID);
             request.AddParameter("name", folderName);
@@ -189,7 +202,7 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information("v1/nodes: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<CreateFolderResponse>(response.Content);
+            var data = DeserializeResponse<CreateFolderResponse>(response.Content);
 
             if (data != null)
             {
@@ -202,7 +215,7 @@ namespace UploadRecords.Services
                     {
                         var getFolder = await GetNodeFromParentByName(folderName, parentID, 0, ticket);
 
-                        if (getFolder != null && getFolder.Results.Count > 0) 
+                        if (getFolder != null && getFolder.Results.Count > 0)
                         {
                             result.Id = getFolder.Results[0].Data.Properties.Id;
                             result.Error = null;
@@ -262,7 +275,7 @@ namespace UploadRecords.Services
 
             var request = new RestRequest($"v2/nodes/{parentID}/nodes", Method.Get);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddQueryParameter("where_type", type);
             request.AddQueryParameter("where_name", nodeName);
             request.AddQueryParameter("limit", limit);
@@ -270,7 +283,7 @@ namespace UploadRecords.Services
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v2/nodes/{parentID}/nodes: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<GetNodeSubnodesResponse>(response.Content);
+            var data = DeserializeResponse<GetNodeSubnodesResponse>(response.Content);
 
             if (data != null)
             {
@@ -280,7 +293,7 @@ namespace UploadRecords.Services
             return result;
         }
 
-        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(long nodeID, string ticket) 
+        public async Task<GetNodeAncestorsResponse> GetNodeAncestors(long nodeID, string ticket)
         {
             GetNodeAncestorsResponse result = new()
             {
@@ -289,12 +302,12 @@ namespace UploadRecords.Services
 
             var request = new RestRequest($"v1/nodes/{nodeID}/ancestors", Method.Get);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/ancestors" + response.Content);
 
-            var data = JsonConvert.DeserializeObject<GetNodeAncestorsResponse>(response.Content);
+            var data = DeserializeResponse<GetNodeAncestorsResponse>(response.Content);
 
             if(data != null)
             {
@@ -303,20 +316,20 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<ApplyCategoryResponse> ApplyCategoryOnNode(long nodeID, string body, long catID, string ticket)
+        public async Task<CommonResponse> ApplyCategoryOnNode(long nodeID, string body, long catID, string ticket)
         {
-            ApplyCategoryResponse result = new();
+            CommonResponse result = new();
 
             var request = new RestRequest($"v1/nodes/{nodeID}/categories", Method.Post);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddParameter("body", body);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/categories body: " + body);
             Logger.Information($"v1/nodes/{nodeID}/categories: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
+            var data = DeserializeResponse<CommonResponse>(response.Content);
 
             if(data != null)
             {
@@ -335,20 +348,20 @@ namespace UploadRecords.Services
 
             return result;
         }
-        public async Task<ApplyCategoryResponse> UpdateCategoryOnNode(long catID, long nodeID, string body, string ticket)
+        public async Task<CommonResponse> UpdateCategoryOnNode(long catID, long nodeID, string body, string ticket)
         {
-            ApplyCategoryResponse result = new();
+            CommonResponse result = new();
 
             var request = new RestRequest($"v1/nodes/{nodeID}/categories/{catID}", Method.Put);
 
-            request.AddHeader("otcsticket", ticket);
+            request.AddHeader(TicketHeader, ticket);
             request.AddParameter("body", body);
 
             var response = await Client.ExecuteAsync(request);
             Logger.Information($"v1/nodes/{nodeID}/categories/{catID} body: " + body);
             Logger.Information($"v1/nodes/{nodeID}/categories/{catID}: " + response.Content);
 
-            var data = JsonConvert.DeserializeObject<ApplyCategoryResponse>(response.Content);
+            var data = DeserializeResponse<CommonResponse>(response.Content);
 
             if(data != null)
             {

@@ -8,7 +8,7 @@ namespace UploadRecords.Models
 {
     public class UpdateNodePermissionData
     {
-        public List<string> Permissions { get; set; }
+        public List<string> Permissions { get; set; } = [];
         public long RightID { get; set; }
     }
 }
