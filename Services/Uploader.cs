@@ -53,70 +53,71 @@ namespace UploadRecords.Services
 
                 if (item != null)
                 {
-                    if (item.TotalRun >= queue.MaxRun)
+                    var result = await ProcessScheduledFile(otcs, queue, item, functionalAdminPermissions, ticket);
+                    ticket = result.Ticket;
+                    if (result.SkipDelay)
                     {
-                        var remarks = $"{item.File.Name} upload is failed {queue.MaxRun} times";
-                        item.File.Status = BatchFileStatus.Skipped;
-                        item.File.Remarks = remarks;
-                        item.File.EndDate = DateTime.Now;
-                        item.File.Attempt = item.TotalRun;
-                        Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
-                        UpdateProcessedFile(item.File);
-                        queue.Queues.Remove(item);
                         continue;
                     }
+                }
 
-                    // Renew The Ticket
-                    if(ticket == null)
+                Thread.Sleep(IntervalBetweenFiles);
+            }
+
+            Logger.Information($"Upload Completed");
+        }
+
+        private async Task<(string? Ticket, bool SkipDelay)> ProcessScheduledFile(OTCS otcs, Queue queue,
+            QueueItem item, List<UpdateNodePermissionData> functionalAdminPermissions, string? ticket)
+        {
+            if (item.TotalRun >= queue.MaxRun)
+            {
+                var remarks = $"{item.File.Name} upload is failed {queue.MaxRun} times";
+                item.File.Status = BatchFileStatus.Skipped;
+                item.File.Remarks = remarks;
+                item.File.EndDate = DateTime.Now;
+                item.File.Attempt = item.TotalRun;
+                Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
+                UpdateProcessedFile(item.File);
+                queue.Queues.Remove(item);
+                return (ticket, true);
+            }
+
+            // Renew The Ticket
+            if(ticket == null)
+            {
+                var getTicket = await otcs.GetTicket();
+                if (getTicket.Error != null)
+                {
+                    var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
+                    item.File.Status = BatchFileStatus.Skipped;
+                    item.File.Remarks = remarks;
+                    item.File.EndDate = DateTime.Now;
+                    item.File.Attempt = item.TotalRun;
+                    UpdateProcessedFile(item.File);
+                    Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
+                    queue.RegisterFile(item.File);
+                    return (ticket, true);
+                }
+
+                ticket = getTicket.Ticket;
+            }
+
+            if (ticket != null)
+            {
+                var result = await UploadSingleFile(otcs, queue, item, functionalAdminPermissions, ticket);
+
+                if (result == 1)
+                {
+                    UpdateProcessedFile(item.File);
+                    queue.Queues.Remove(item);
+                }
+                else if (result == 2)
+                {
+                    var getTicket = await otcs.GetTicket();
+                    if (getTicket.Error != null)
                     {
-                        var getTicket = await otcs.GetTicket();
-                        if (getTicket.Error != null)
-                        {
-                            var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
-                            item.File.Status = BatchFileStatus.Skipped;
-                            item.File.Remarks = remarks;
-                            item.File.EndDate = DateTime.Now;
-                            item.File.Attempt = item.TotalRun;
-                            UpdateProcessedFile(item.File);
-                            Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
-                            queue.RegisterFile(item.File);
-                            continue;
-                        }
-
-                        ticket = getTicket.Ticket;
-                    }
-
-                    if (ticket != null)
-                    {
-                        var result = await UploadSingleFile(otcs, queue, item, functionalAdminPermissions, ticket);
-
-                        if (result == 1)
-                        {
-                            UpdateProcessedFile(item.File);
-                            queue.Queues.Remove(item);
-                        }
-                        else if (result == 2)
-                        {
-                            var getTicket = await otcs.GetTicket();
-                            if (getTicket.Error != null)
-                            {
-                                var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
-                                item.File.Status = BatchFileStatus.Skipped;
-                                item.File.Remarks = remarks;
-                                item.File.EndDate = DateTime.Now;
-                                item.File.Attempt = item.TotalRun;
-                                UpdateProcessedFile(item.File);
-                                Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
-                                queue.RegisterFile(item.File);
-                                continue;
-                            }
-
-                            ticket = getTicket.Ticket;
-                        }
-                    }
-                    else
-                    {
-                        var remarks = $"Fail to upload file {item.File.Name} due to ticket is empty";
+                        var remarks = $"Fail to upload file {item.File.Name} due to {getTicket.Error}";
                         item.File.Status = BatchFileStatus.Skipped;
                         item.File.Remarks = remarks;
                         item.File.EndDate = DateTime.Now;
@@ -124,14 +125,25 @@ namespace UploadRecords.Services
                         UpdateProcessedFile(item.File);
                         Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
                         queue.RegisterFile(item.File);
+                        return (ticket, true);
                     }
 
+                    ticket = getTicket.Ticket;
                 }
-
-                Thread.Sleep(IntervalBetweenFiles);
+            }
+            else
+            {
+                var remarks = $"Fail to upload file {item.File.Name} due to ticket is empty";
+                item.File.Status = BatchFileStatus.Skipped;
+                item.File.Remarks = remarks;
+                item.File.EndDate = DateTime.Now;
+                item.File.Attempt = item.TotalRun;
+                UpdateProcessedFile(item.File);
+                Audit.Fail(item.File.LogDirectory, $"{remarks} - {Common.ListAncestors(item.File.OTCS.Ancestors)}");
+                queue.RegisterFile(item.File);
             }
 
-            Logger.Information($"Upload Completed");
+            return (ticket, false);
         }
 
         public async Task<int> UploadSingleFile(OTCS otcs, Queue queue, QueueItem item, List<UpdateNodePermissionData> functionalAdminPerms, string ticket)

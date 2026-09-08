@@ -124,144 +124,156 @@ namespace UploadRecords.Services
                     ValidFiles.Add(batchFile);
                 }
 
-                foreach (var fileRefFolder in Directory.GetDirectories(subBatchFolder))
-                {
-                    var fileRefFolderName = Path.GetFileName(fileRefFolder);
-
-                    var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, getTicket.Ticket!, Divisions, FunctionAdminIDs);
-
-                    // Failed to create batch folder
-                    if (createFileRefFolder.Error != null)
-                    {
-                        Logger.Error("Process aborted due to: " + createFileRefFolder.Error);
-                        continue;
-                    }
-
-                    ancestors.AddRange([
-                        new()
-                        {
-                            Id = createFileRefFolder.Id,
-                            Name = fileRefFolderName,
-                            ParentID = nodeId,
-                            Type = 0
-                        }
-                    ]);
-
-                    foreach (var folderFile in FoldersContainsFile)
-                    {
-                        var fileAncestors = ancestors;
-                        var filesPath = Path.Combine(fileRefFolder, folderFile);
-
-                        if (Path.Exists(filesPath))
-                        {
-                            var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, getTicket.Ticket!, Divisions, FunctionAdminIDs);
-
-                            // Failed to create batch folder
-                            if (createFileFolder.Error != null)
-                            {
-                                Logger.Error("Process aborted due to: " + createFileFolder.Error);
-                                continue;
-                            }
-
-                            fileAncestors.Add(new()
-                            {
-                                Id = createFileFolder.Id,
-                                Name = folderFile,
-                                ParentID = createFileRefFolder.Id,
-                                Type = 0
-                            });
-
-                            foreach (var file in Directory.GetFiles(filesPath))
-                            {
-                                var fileInfo = new FileInfo(file);
-                                var fileName = Path.GetFileName(file);
-                                var batchFile = new BatchFile()
-                                {
-                                    ControlFile = ControlFile,
-                                    Path = file,
-                                    LogDirectory = logsPath,
-                                    Name = Path.GetFileName(file),
-                                    StartDate = DateTime.Now,
-                                    Attempt = 1,
-                                    SizeInKB = (double)fileInfo.Length / 1024,
-                                    OTCS = new() { ParentID = createFileFolder.Id, Ancestors = fileAncestors },
-                                    BatchFolderPath = FolderPath,
-                                    SubBatchFolderPath = subBatchFolder,
-                                    PermissionInfo = new()
-                                    {
-                                        Division = new()
-                                        {
-                                            UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf",
-                                            NoRepPermission = Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif"
-                                        }
-                                    }
-                                };
-
-                                Logger.Information($"Processing {file}");
-
-                                // Check file extensions
-                                var ext = Path.GetExtension(file).ToLowerInvariant();
-                                if (!ValidFileExtensions.Contains(ext))
-                                {
-                                    var remarks = $"File {fileName} has no valid extension";
-                                    batchFile.Status = BatchFileStatus.Failed;
-                                    batchFile.Remarks = remarks;
-                                    batchFile.EndDate = DateTime.Now;
-                                    InvalidFiles.Add(batchFile);
-                                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                    continue;
-                                }
-
-                                if (fileInfo.Length == 0)
-                                {
-                                    var remarks = $"File {fileName} is empty";
-                                    batchFile.Status = BatchFileStatus.Failed;
-                                    batchFile.Remarks = remarks;
-                                    batchFile.EndDate = DateTime.Now;
-                                    InvalidFiles.Add(batchFile);
-                                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                    continue;
-                                }
-
-                                var checksum = Checksum.GetFromFile(file);
-                                var parts = file.Split(Path.DirectorySeparatorChar);
-                                var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
-                                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
-
-                                if (findChecksumByPath == null)
-                                {
-                                    var remarks = $"File {fileName} checksum's not found in manifest file";
-                                    batchFile.Status = BatchFileStatus.Failed;
-                                    batchFile.Remarks = remarks;
-                                    batchFile.EndDate = DateTime.Now;
-                                    InvalidFiles.Add(batchFile);
-                                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                    continue;
-                                }
-
-                                if (findChecksumByPath.Checksum != checksum)
-                                {
-                                    var remarks = $"File {fileName} checksum's is mismatch";
-                                    batchFile.Status = BatchFileStatus.Failed;
-                                    batchFile.Remarks = remarks;
-                                    batchFile.EndDate = DateTime.Now;
-                                    InvalidFiles.Add(batchFile);
-                                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
-                                    continue;
-                                }
-
-                                batchFile.Checksum = checksum;
-                                ValidFiles.Add(batchFile);
-                            }
-                        }
-                    }
-                }
+                await ScanFileReferenceFolders(subBatchFolder, logsPath, nodeId, getTicket.Ticket!, ancestors, manifest);
 
                 Logger.Information($"Scanning Completed");
             }
             catch (Exception ex)
             {
                 Logger.Error(ex.Message);
+            }
+        }
+
+        private async Task ScanFileReferenceFolders(string subBatchFolder, string logsPath, long nodeId,
+            string ticket, List<GetNodeAcestorsAncestor> ancestors, List<ManifestFile> manifest)
+        {
+            foreach (var fileRefFolder in Directory.GetDirectories(subBatchFolder))
+            {
+                var fileRefFolderName = Path.GetFileName(fileRefFolder);
+
+                var createFileRefFolder = await OTCS.CreateFolder(fileRefFolderName, nodeId, ticket, Divisions, FunctionAdminIDs);
+
+                // Failed to create batch folder
+                if (createFileRefFolder.Error != null)
+                {
+                    Logger.Error("Process aborted due to: " + createFileRefFolder.Error);
+                    continue;
+                }
+
+                ancestors.AddRange([
+                    new()
+                    {
+                        Id = createFileRefFolder.Id,
+                        Name = fileRefFolderName,
+                        ParentID = nodeId,
+                        Type = 0
+                    }
+                ]);
+
+                foreach (var folderFile in FoldersContainsFile)
+                {
+                    var fileAncestors = ancestors;
+                    var filesPath = Path.Combine(fileRefFolder, folderFile);
+
+                    if (Path.Exists(filesPath))
+                    {
+                        var createFileFolder = await OTCS.CreateFolder(folderFile, createFileRefFolder.Id, ticket, Divisions, FunctionAdminIDs);
+
+                        // Failed to create batch folder
+                        if (createFileFolder.Error != null)
+                        {
+                            Logger.Error("Process aborted due to: " + createFileFolder.Error);
+                            continue;
+                        }
+
+                        fileAncestors.Add(new()
+                        {
+                            Id = createFileFolder.Id,
+                            Name = folderFile,
+                            ParentID = createFileRefFolder.Id,
+                            Type = 0
+                        });
+
+                        ScanFiles(filesPath, logsPath, subBatchFolder, createFileFolder.Id, fileAncestors, manifest);
+                    }
+                }
+            }
+        }
+
+        private void ScanFiles(string filesPath, string logsPath, string subBatchFolder, long nodeId,
+            List<GetNodeAcestorsAncestor> fileAncestors, List<ManifestFile> manifest)
+        {
+            foreach (var file in Directory.GetFiles(filesPath))
+            {
+                var fileInfo = new FileInfo(file);
+                var fileName = Path.GetFileName(file);
+                var batchFile = new BatchFile()
+                {
+                    ControlFile = ControlFile,
+                    Path = file,
+                    LogDirectory = logsPath,
+                    Name = Path.GetFileName(file),
+                    StartDate = DateTime.Now,
+                    Attempt = 1,
+                    SizeInKB = (double)fileInfo.Length / 1024,
+                    OTCS = new() { ParentID = nodeId, Ancestors = fileAncestors },
+                    BatchFolderPath = FolderPath,
+                    SubBatchFolderPath = subBatchFolder,
+                    PermissionInfo = new()
+                    {
+                        Division = new()
+                        {
+                            UpdateBasedOnMetadata = Path.GetExtension(fileName) == ".pdf",
+                            NoRepPermission = Path.GetExtension(fileName) == ".tiff" || Path.GetExtension(fileName) == ".tif"
+                        }
+                    }
+                };
+
+                Logger.Information($"Processing {file}");
+
+                // Check file extensions
+                var ext = Path.GetExtension(file).ToLowerInvariant();
+                if (!ValidFileExtensions.Contains(ext))
+                {
+                    var remarks = $"File {fileName} has no valid extension";
+                    batchFile.Status = BatchFileStatus.Failed;
+                    batchFile.Remarks = remarks;
+                    batchFile.EndDate = DateTime.Now;
+                    InvalidFiles.Add(batchFile);
+                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                    continue;
+                }
+
+                if (fileInfo.Length == 0)
+                {
+                    var remarks = $"File {fileName} is empty";
+                    batchFile.Status = BatchFileStatus.Failed;
+                    batchFile.Remarks = remarks;
+                    batchFile.EndDate = DateTime.Now;
+                    InvalidFiles.Add(batchFile);
+                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                    continue;
+                }
+
+                var checksum = Checksum.GetFromFile(file);
+                var parts = file.Split(Path.DirectorySeparatorChar);
+                var filePathChecksum = string.Join(Path.DirectorySeparatorChar.ToString(), parts.Skip(Math.Max(0, parts.Length - 3)));
+                var findChecksumByPath = manifest.FirstOrDefault(x => x.Path == filePathChecksum);
+
+                if (findChecksumByPath == null)
+                {
+                    var remarks = $"File {fileName} checksum's not found in manifest file";
+                    batchFile.Status = BatchFileStatus.Failed;
+                    batchFile.Remarks = remarks;
+                    batchFile.EndDate = DateTime.Now;
+                    InvalidFiles.Add(batchFile);
+                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                    continue;
+                }
+
+                if (findChecksumByPath.Checksum != checksum)
+                {
+                    var remarks = $"File {fileName} checksum's is mismatch";
+                    batchFile.Status = BatchFileStatus.Failed;
+                    batchFile.Remarks = remarks;
+                    batchFile.EndDate = DateTime.Now;
+                    InvalidFiles.Add(batchFile);
+                    Audit.Fail(logsPath, $"{remarks} - {Common.ListAncestors(batchFile.OTCS.Ancestors)}");
+                    continue;
+                }
+
+                batchFile.Checksum = checksum;
+                ValidFiles.Add(batchFile);
             }
         }
 

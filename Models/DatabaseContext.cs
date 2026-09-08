@@ -14,9 +14,9 @@ namespace UploadRecords.Models
             ConnectionString = connectionStr;
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder options)
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            options.UseSqlServer(ConnectionString);
+            optionsBuilder.UseSqlServer(ConnectionString);
         }
     }
 }
